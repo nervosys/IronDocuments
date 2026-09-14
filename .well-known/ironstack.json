@@ -1,0 +1,148 @@
+{
+  "ironstack": "1",
+  "id": "irondocuments",
+  "product": "IronDocuments",
+  "layer": "tools",
+  "role": "Document processing and rendering across seventeen formats, identified from content rather than from a file extension. Two implementations share the repository: a zero-dependency TypeScript package for PDF in Node and the browser, and the Rust engine where new capability goes, which ships the CLI and an MCP server built for agents.",
+  "surfaces": ["cli", "mcp", "npm"],
+  "capabilities": [
+    {
+      "name": "doc.extract",
+      "description": "Extract what an author put in a document: text, metadata, annotations, outline, images, tables, figures, formulas, form fields, logical structure, and reading-order layout.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli", "mcp"],
+      "authority": "public",
+      "reversible": "reversible",
+      "consequence": "informational"
+    },
+    {
+      "name": "doc.spreadsheet",
+      "description": "Read a spreadsheet as typed cells with formulas, and recompute those formulas to report what disagrees with the stored values.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli", "mcp"],
+      "authority": "public",
+      "reversible": "reversible",
+      "consequence": "informational"
+    },
+    {
+      "name": "doc.chunk",
+      "description": "Generate semantic chunks for a retrieval pipeline.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli", "mcp"],
+      "authority": "public",
+      "reversible": "reversible",
+      "consequence": "informational"
+    },
+    {
+      "name": "doc.search",
+      "description": "Search a document. ADF answers from the index inside the file; other formats are scanned.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli", "mcp"],
+      "authority": "public",
+      "reversible": "reversible",
+      "consequence": "informational"
+    },
+    {
+      "name": "doc.verify",
+      "description": "Check a quotation against a document's recorded provenance, so a citation can be held to the file it claims to come from.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli", "mcp"],
+      "authority": "public",
+      "reversible": "reversible",
+      "consequence": "informational"
+    },
+    {
+      "name": "doc.scan",
+      "description": "Scan for hidden and off-page text, which is where a document carries content a reader does not see and a model does.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli", "mcp"],
+      "authority": "public",
+      "reversible": "reversible",
+      "consequence": "informational"
+    },
+    {
+      "name": "doc.convert",
+      "description": "Convert any supported document to Markdown, HTML, JSON or plain text.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli", "mcp"],
+      "authority": "public",
+      "reversible": "unknown",
+      "consequence": "data"
+    },
+    {
+      "name": "doc.displaylist",
+      "description": "Emit a page's device-space display list as JSON, for a hardware-accelerated renderer.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli"],
+      "authority": "public",
+      "reversible": "reversible",
+      "consequence": "informational"
+    },
+    {
+      "name": "doc.formats",
+      "description": "List every document format this build can read, with the geometry each one has and the extensions it answers to.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli", "mcp"],
+      "authority": "public",
+      "reversible": "reversible",
+      "consequence": "informational"
+    },
+    {
+      "name": "doc.describe",
+      "description": "Emit the JSON-LD ontology an agent reads before calling anything.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli"],
+      "authority": "public",
+      "reversible": "reversible",
+      "consequence": "informational"
+    },
+    {
+      "name": "doc.mcp",
+      "description": "Run as an MCP stdio server, exposing the extraction surface to an agent.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": ["cli", "mcp"],
+      "authority": "closed_by_deployment",
+      "reversible": "reversible",
+      "consequence": "data"
+    }
+  ],
+  "ontology": {
+    "command": "irondoc describe",
+    "document": "README.md"
+  },
+  "unmapped": [
+    {
+      "area": "what a document says",
+      "why": "Everything here is about structure: what the author put in the file and where. Whether a sentence is true, relevant or an instruction aimed at a model is not asked. `doc.scan` finds text positioned where a reader will not see it, which is a fact about geometry; grading that text is IronRails' question."
+    },
+    {
+      "area": "whether a document is safe to open",
+      "why": "A document format can carry an executing payload, and nothing here grades that. IronHardener answers what loading an artifact would do; this answers what the artifact contains."
+    },
+    {
+      "area": "scanned pages",
+      "why": "`scanned` detects image-dominated pages that need OCR and stops there. No OCR runs, so a scanned document yields its structure and very little text, and the gap is reported rather than filled with silence."
+    },
+    {
+      "area": "writing documents",
+      "why": "This reads and converts. It does not author, edit or sign a document, so a conversion is a new file beside the original rather than a change to it."
+    },
+    {
+      "area": "the two implementations differing",
+      "why": "The npm package handles PDF and the Rust engine handles seventeen formats. Nothing checks that both give the same answer for a PDF, so a caller choosing between them is choosing between two implementations rather than two interfaces to one."
+    }
+  ],
+  "note": "Written 2026-09-14, this component's first manifest, after the rename from AgenticPDF. Capabilities are coarser than the binary's twenty-five subcommands, per IronStack decision 0006: `doc.extract` covers text, meta, annotations, outline, images, markdown, table, figures, structure, forms, formula, layout and all, because they are one capability asked about different parts of a file. `requires_grant` is false throughout except `doc.mcp`, which serves a surface to an agent rather than answering one call; nothing here holds a credential or reaches the network, and a document is read from a path the caller supplied. `budgeted` is false because the work is bounded by the file it was pointed at. The README still spells the old binary name `apdf` in fifteen places, which is why the registry carries `agenticpdf` and `apdf` as aliases.",
+  "grounding": "derived_from_declaration"
+}

@@ -2,12 +2,15 @@
  * IronDocuments - Browser Bundle
  * Modern, TypeScript-native PDF processing library
  * Version: 1.0.1
- * Compiled: 2026-03-31T05:39:00.901Z
+ * Compiled: 2026-09-15T05:55:29.083Z
  */
 
 (function(global) {
     'use strict';
     
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 NERVOSYS, LLC. Dual-licensed under the GNU AGPLv3 or a
+// commercial license; see LICENSE and LICENSE-AGPL.txt.
 /**
  * IronDocuments - Complete TypeScript-native PDF processing library
  * with modern streaming, AI integration, and performance optimizations
@@ -654,6 +657,138 @@ class IronDocuments {
         Telemetry.trackFeature('streamSemanticChunks');
         const chunker = new SemanticChunker(this, options);
         yield* chunker.stream();
+    }
+    /**
+     * Unified single-call ingestion optimised for AI agents.
+     * Performs metadata extraction, AI analysis (structural + semantic chunks),
+     * and returns everything in one flat, agent-friendly structure.
+     *
+     * @param options - Controls chunking strategy, size, and included data
+     * @returns IngestResult with metadata, structure, chunks, and stats
+     */
+    async ingest(options) {
+        const startTime = performance.now();
+        Telemetry.trackFeature('ingest');
+        const aiOpts = {
+            enableStructuralAnalysis: options?.includeStructure !== false,
+            enableSemanticChunking: true,
+            chunkSize: options?.maxChunkSize ?? 1000,
+            chunkOverlap: options?.overlapSize ?? 100,
+        };
+        const ai = await this.getAIFeatures(aiOpts);
+        const meta = this.getMetadata() ?? {};
+        const chunks = ai.semanticChunks.map(sc => ({
+            id: sc.id,
+            content: sc.content,
+            pages: sc.pageNumbers,
+            type: sc.type,
+            tokenCount: sc.metadata.tokenCount,
+            importance: sc.metadata.importance,
+            keywords: sc.metadata.keywords ?? [],
+        }));
+        let pageTexts;
+        if (options?.includePageText) {
+            pageTexts = [];
+            const pageRange = options.pageRange;
+            const pageCount = this.getPageCount();
+            const start = pageRange?.start ?? 1;
+            const end = Math.min(pageRange?.end ?? pageCount, pageCount);
+            for (let p = start; p <= end; p++) {
+                const textContents = await this.extractText({
+                    pageRange: { start: p, end: p },
+                    normalizeWhitespace: true,
+                });
+                const text = Array.isArray(textContents)
+                    ? textContents.map((tc) => tc.text ?? '').join(' ')
+                    : '';
+                pageTexts.push({ page: p, text });
+            }
+        }
+        const totalTokens = chunks.reduce((sum, c) => sum + c.tokenCount, 0);
+        return {
+            metadata: meta,
+            documentType: ai.structuralAnalysis?.documentType ?? 'Other',
+            summary: ai.nlpReady?.summary ?? '',
+            keywords: ai.nlpReady?.keywords ?? [],
+            structure: {
+                sections: ai.structuralAnalysis?.sections?.length ?? 0,
+                tables: ai.structuralAnalysis?.tables?.length ?? 0,
+                figures: ai.structuralAnalysis?.figures?.length ?? 0,
+            },
+            chunks,
+            ...(pageTexts ? { pageTexts } : {}),
+            stats: {
+                pageCount: this.getPageCount(),
+                fileSize: this.getFileSize(),
+                totalChunks: chunks.length,
+                totalTokens,
+                processingTimeMs: Math.round(performance.now() - startTime),
+            },
+        };
+    }
+    /**
+     * Streaming version of `ingest()` that yields NDJSON-compatible records.
+     *
+     * Emission order:
+     * 1. `{ type: 'header', metadata, documentType, summary, keywords, structure }` — one record
+     * 2. `{ type: 'chunk', ...IngestChunk }` — one per chunk
+     * 3. `{ type: 'footer', stats }` — one record
+     *
+     * @param options - Same options as ingest()
+     * @yields Objects that can be serialised with JSON.stringify per line
+     */
+    async *streamIngest(options) {
+        const startTime = performance.now();
+        Telemetry.trackFeature('streamIngest');
+        const aiOpts = {
+            enableStructuralAnalysis: options?.includeStructure !== false,
+            enableSemanticChunking: true,
+            chunkSize: options?.maxChunkSize ?? 1000,
+            chunkOverlap: options?.overlapSize ?? 100,
+        };
+        const ai = await this.getAIFeatures(aiOpts);
+        const meta = this.getMetadata() ?? {};
+        // Yield header
+        yield {
+            type: 'header',
+            metadata: meta,
+            documentType: ai.structuralAnalysis?.documentType ?? 'Other',
+            summary: ai.nlpReady?.summary ?? '',
+            keywords: ai.nlpReady?.keywords ?? [],
+            structure: {
+                sections: ai.structuralAnalysis?.sections?.length ?? 0,
+                tables: ai.structuralAnalysis?.tables?.length ?? 0,
+                figures: ai.structuralAnalysis?.figures?.length ?? 0,
+            },
+        };
+        // Yield chunks one by one
+        let totalTokens = 0;
+        let totalChunks = 0;
+        for (const sc of ai.semanticChunks) {
+            totalChunks++;
+            totalTokens += sc.metadata.tokenCount;
+            yield {
+                type: 'chunk',
+                id: sc.id,
+                content: sc.content,
+                pages: sc.pageNumbers,
+                chunkType: sc.type,
+                tokenCount: sc.metadata.tokenCount,
+                importance: sc.metadata.importance,
+                keywords: sc.metadata.keywords ?? [],
+            };
+        }
+        // Yield footer
+        yield {
+            type: 'footer',
+            stats: {
+                pageCount: this.getPageCount(),
+                fileSize: this.getFileSize(),
+                totalChunks,
+                totalTokens,
+                processingTimeMs: Math.round(performance.now() - startTime),
+            },
+        };
     }
     /**
      * Search for text within the PDF document.
@@ -2226,6 +2361,26 @@ class IronDocuments {
                 ]
             },
             {
+                id: 'agentic-ingest',
+                name: 'Unified Agentic Ingestion',
+                description: 'Single-call PDF ingestion for AI agents. Returns metadata, structure, semantic chunks, and stats in one pass.',
+                steps: [
+                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await IronDocuments.fromFile(file, { lazyLoad: true });" },
+                    { order: 2, method: 'ingest', description: 'Single-call ingestion', example: "const result = await pdf.ingest({ strategy: 'semantic', maxChunkSize: 1000 });" },
+                    { order: 3, method: 'close', description: 'Release resources', example: "pdf.close();" }
+                ]
+            },
+            {
+                id: 'agentic-ingest-streaming',
+                name: 'Streaming Agentic Ingestion (NDJSON)',
+                description: 'Stream PDF ingestion results as NDJSON records for memory-efficient pipeline consumption.',
+                steps: [
+                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await IronDocuments.fromFile(file, { lazyLoad: true });" },
+                    { order: 2, method: 'streamIngest', description: 'Stream NDJSON records', example: "for await (const record of pdf.streamIngest()) { process.stdout.write(JSON.stringify(record) + '\\n'); }" },
+                    { order: 3, method: 'close', description: 'Release resources', example: "pdf.close();" }
+                ]
+            },
+            {
                 id: 'agent-discovery',
                 name: 'AI Agent Discovery & Integration',
                 description: 'Discover all library capabilities, generate tool schemas for function calling, and get workflow recommendations. Use this as the first step when integrating IronDocuments with an AI agent or LLM system.',
@@ -2831,6 +2986,360 @@ class IronDocuments {
         return walkOutline(firstEntry);
     }
     /**
+     * Get embedded files from the document's Names/EmbeddedFiles tree.
+     * Also includes file attachments found in annotations.
+     * @returns Array of EmbeddedFile objects with name, MIME type, size, and data
+     */
+    getEmbeddedFiles() {
+        const files = [];
+        if (!this.parser || !this.xrefTable || !this.catalog)
+            return files;
+        const parser = this.parser;
+        const xref = this.xrefTable;
+        const resolve = (obj) => {
+            if (obj && obj.type === PDFObjectType.Reference) {
+                const ref = obj.value;
+                return parser.parseIndirectObject(ref.objectNumber, ref.generationNumber, xref);
+            }
+            return obj;
+        };
+        const getString = (dict, key) => {
+            const obj = dict.entries.get(key);
+            return obj && obj.type === PDFObjectType.String ? obj.value : undefined;
+        };
+        const getNumber = (dict, key) => {
+            const obj = dict.entries.get(key);
+            return obj && obj.type === PDFObjectType.Number ? obj.value : undefined;
+        };
+        // Walk the /Names -> /EmbeddedFiles name tree
+        const namesRef = this.catalog.entries.get('Names');
+        if (!namesRef)
+            return files;
+        const namesObj = resolve(namesRef);
+        if (namesObj.type !== PDFObjectType.Dictionary)
+            return files;
+        const namesDict = namesObj.value;
+        const efRef = namesDict.entries.get('EmbeddedFiles');
+        if (!efRef)
+            return files;
+        const efObj = resolve(efRef);
+        if (efObj.type !== PDFObjectType.Dictionary)
+            return files;
+        // Name tree: walk /Names array (leaf node) or /Kids array (intermediate node)
+        const visited = new Set();
+        const walkNameTree = (node) => {
+            // Leaf node: /Names is [name1, filespec1, name2, filespec2, ...]
+            const namesArr = node.entries.get('Names');
+            if (namesArr) {
+                const resolved = resolve(namesArr);
+                if (resolved.type === PDFObjectType.Array) {
+                    const arr = resolved.value;
+                    for (let i = 0; i + 1 < arr.length; i += 2) {
+                        const nameObj = resolve(arr[i]);
+                        const fsObj = resolve(arr[i + 1]);
+                        const name = nameObj.type === PDFObjectType.String ? nameObj.value : `file_${i / 2}`;
+                        if (visited.has(name))
+                            continue;
+                        visited.add(name);
+                        if (fsObj.type === PDFObjectType.Dictionary) {
+                            const fsDict = fsObj.value;
+                            const file = {
+                                name: getString(fsDict, 'UF') || getString(fsDict, 'F') || name,
+                                description: getString(fsDict, 'Desc'),
+                            };
+                            // Get relationship (PDF 2.0)
+                            const afRel = fsDict.entries.get('AFRelationship');
+                            if (afRel?.type === PDFObjectType.Name) {
+                                file.relationship = afRel.value;
+                            }
+                            // Extract from /EF dictionary
+                            const efStreamRef = fsDict.entries.get('EF');
+                            if (efStreamRef) {
+                                const efStreamObj = resolve(efStreamRef);
+                                if (efStreamObj.type === PDFObjectType.Dictionary) {
+                                    const efStreamDict = efStreamObj.value;
+                                    const fRef = efStreamDict.entries.get('F') || efStreamDict.entries.get('UF');
+                                    if (fRef) {
+                                        const streamObj = resolve(fRef);
+                                        if (streamObj.type === PDFObjectType.Dictionary) {
+                                            const sd = streamObj.value;
+                                            const subtypeObj = sd.entries.get('Subtype');
+                                            if (subtypeObj?.type === PDFObjectType.Name) {
+                                                file.mimeType = subtypeObj.value.replace('#2F', '/');
+                                            }
+                                            const paramsRef = sd.entries.get('Params');
+                                            if (paramsRef) {
+                                                const paramsObj = resolve(paramsRef);
+                                                if (paramsObj.type === PDFObjectType.Dictionary) {
+                                                    const pd = paramsObj.value;
+                                                    file.size = getNumber(pd, 'Size');
+                                                    const cd = getString(pd, 'CreationDate');
+                                                    if (cd)
+                                                        file.creationDate = parser.parsePDFDate(cd);
+                                                    const md = getString(pd, 'ModDate');
+                                                    if (md)
+                                                        file.modificationDate = parser.parsePDFDate(md);
+                                                }
+                                            }
+                                        }
+                                        if (streamObj.type === PDFObjectType.Stream) {
+                                            file.data = streamObj.value;
+                                        }
+                                    }
+                                }
+                            }
+                            files.push(file);
+                        }
+                    }
+                }
+            }
+            // Intermediate node: /Kids is an array of sub-tree nodes
+            const kidsRef = node.entries.get('Kids');
+            if (kidsRef) {
+                const kidsObj = resolve(kidsRef);
+                if (kidsObj.type === PDFObjectType.Array) {
+                    for (const kidRef of kidsObj.value) {
+                        const kidObj = resolve(kidRef);
+                        if (kidObj.type === PDFObjectType.Dictionary) {
+                            walkNameTree(kidObj.value);
+                        }
+                    }
+                }
+            }
+        };
+        walkNameTree(efObj.value);
+        return files;
+    }
+    /**
+     * Get page labels defined in the document.
+     * Page labels allow custom numbering (e.g., roman numerals for preface, arabic for body).
+     * @returns Array of PageLabel entries describing numbering ranges
+     */
+    getPageLabels() {
+        const labels = [];
+        if (!this.parser || !this.xrefTable || !this.catalog)
+            return labels;
+        const parser = this.parser;
+        const xref = this.xrefTable;
+        const resolve = (obj) => {
+            if (obj && obj.type === PDFObjectType.Reference) {
+                const ref = obj.value;
+                return parser.parseIndirectObject(ref.objectNumber, ref.generationNumber, xref);
+            }
+            return obj;
+        };
+        const plRef = this.catalog.entries.get('PageLabels');
+        if (!plRef)
+            return labels;
+        const plObj = resolve(plRef);
+        if (plObj.type !== PDFObjectType.Dictionary)
+            return labels;
+        const plDict = plObj.value;
+        // Number tree: /Nums is [key1, val1, key2, val2, ...]
+        // where key is a 0-based page index and val is a label dictionary
+        const walkNumberTree = (node) => {
+            const numsRef = node.entries.get('Nums');
+            if (numsRef) {
+                const numsObj = resolve(numsRef);
+                if (numsObj.type === PDFObjectType.Array) {
+                    const arr = numsObj.value;
+                    for (let i = 0; i + 1 < arr.length; i += 2) {
+                        const keyObj = resolve(arr[i]);
+                        const valObj = resolve(arr[i + 1]);
+                        if (keyObj.type !== PDFObjectType.Number)
+                            continue;
+                        const startPage = keyObj.value + 1; // Convert 0-based to 1-based
+                        const label = { startPage };
+                        if (valObj.type === PDFObjectType.Dictionary) {
+                            const valDict = valObj.value;
+                            const sObj = valDict.entries.get('S');
+                            if (sObj?.type === PDFObjectType.Name) {
+                                label.style = sObj.value;
+                            }
+                            const pObj = valDict.entries.get('P');
+                            if (pObj?.type === PDFObjectType.String) {
+                                label.prefix = pObj.value;
+                            }
+                            const stObj = valDict.entries.get('St');
+                            if (stObj?.type === PDFObjectType.Number) {
+                                label.startNumber = stObj.value;
+                            }
+                        }
+                        labels.push(label);
+                    }
+                }
+            }
+            // Intermediate node
+            const kidsRef = node.entries.get('Kids');
+            if (kidsRef) {
+                const kidsObj = resolve(kidsRef);
+                if (kidsObj.type === PDFObjectType.Array) {
+                    for (const kidRef of kidsObj.value) {
+                        const kidObj = resolve(kidRef);
+                        if (kidObj.type === PDFObjectType.Dictionary) {
+                            walkNumberTree(kidObj.value);
+                        }
+                    }
+                }
+            }
+        };
+        walkNumberTree(plDict);
+        // Sort by start page in case the tree isn't ordered
+        labels.sort((a, b) => a.startPage - b.startPage);
+        return labels;
+    }
+    /**
+     * Get the structure tree (tagged PDF) for accessibility and semantic understanding.
+     * Returns the root nodes of the document's logical structure.
+     * @returns Array of StructureTreeNode objects representing the document structure
+     */
+    getStructureTree() {
+        if (!this.parser || !this.xrefTable || !this.catalog)
+            return [];
+        const parser = this.parser;
+        const xref = this.xrefTable;
+        const resolve = (obj) => {
+            if (obj && obj.type === PDFObjectType.Reference) {
+                const ref = obj.value;
+                return parser.parseIndirectObject(ref.objectNumber, ref.generationNumber, xref);
+            }
+            return obj;
+        };
+        const stRef = this.catalog.entries.get('StructTreeRoot');
+        if (!stRef)
+            return [];
+        const stObj = resolve(stRef);
+        if (stObj.type !== PDFObjectType.Dictionary)
+            return [];
+        const stDict = stObj.value;
+        // Build page object number -> page index map for page references
+        const objNumToPage = new Map();
+        const collectPages = (node, ref) => {
+            const dict = resolve(node);
+            if (dict.type !== PDFObjectType.Dictionary)
+                return;
+            const d = dict.value;
+            const typeEntry = d.entries.get('Type');
+            const typeName = typeEntry?.type === PDFObjectType.Name ? typeEntry.value : '';
+            if (typeName === 'Page') {
+                if (ref && ref.type === PDFObjectType.Reference) {
+                    objNumToPage.set(ref.value.objectNumber, objNumToPage.size + 1);
+                }
+                return;
+            }
+            const kids = d.entries.get('Kids');
+            if (!kids)
+                return;
+            const kidsArr = resolve(kids);
+            if (kidsArr.type !== PDFObjectType.Array)
+                return;
+            for (const kid of kidsArr.value) {
+                collectPages(kid, kid);
+            }
+        };
+        const pagesRef = this.catalog.entries.get('Pages');
+        if (pagesRef)
+            collectPages(pagesRef);
+        // Walk structure elements recursively
+        const visited = new Set();
+        const maxDepth = 64;
+        const walkStructElement = (elemObj, depth) => {
+            if (depth > maxDepth)
+                return null;
+            const elem = resolve(elemObj);
+            if (elem.type !== PDFObjectType.Dictionary)
+                return null;
+            const dict = elem.value;
+            // Prevent cycles
+            if (elemObj.type === PDFObjectType.Reference) {
+                const objNum = elemObj.value.objectNumber;
+                if (visited.has(objNum))
+                    return null;
+                visited.add(objNum);
+            }
+            const typeObj = dict.entries.get('S');
+            const type = typeObj?.type === PDFObjectType.Name ? typeObj.value : 'Unknown';
+            const node = {
+                type,
+                children: [],
+            };
+            // Optional attributes
+            const titleObj = dict.entries.get('T');
+            if (titleObj) {
+                const tr = resolve(titleObj);
+                if (tr.type === PDFObjectType.String)
+                    node.title = tr.value;
+            }
+            const langObj = dict.entries.get('Lang');
+            if (langObj) {
+                const lr = resolve(langObj);
+                if (lr.type === PDFObjectType.String)
+                    node.lang = lr.value;
+            }
+            const altObj = dict.entries.get('Alt');
+            if (altObj) {
+                const ar = resolve(altObj);
+                if (ar.type === PDFObjectType.String)
+                    node.alt = ar.value;
+            }
+            const actTextObj = dict.entries.get('ActualText');
+            if (actTextObj) {
+                const atr = resolve(actTextObj);
+                if (atr.type === PDFObjectType.String)
+                    node.actualText = atr.value;
+            }
+            // Role mapping
+            // Page reference
+            const pgObj = dict.entries.get('Pg');
+            if (pgObj?.type === PDFObjectType.Reference) {
+                node.pageNumber = objNumToPage.get(pgObj.value.objectNumber);
+            }
+            // Children: /K can be a single element, array, or MCID integer
+            const kObj = dict.entries.get('K');
+            if (kObj) {
+                const kr = resolve(kObj);
+                if (kr.type === PDFObjectType.Array) {
+                    for (const childRef of kr.value) {
+                        const child = walkStructElement(childRef, depth + 1);
+                        if (child)
+                            node.children.push(child);
+                    }
+                }
+                else if (kr.type === PDFObjectType.Dictionary) {
+                    const child = walkStructElement(kr, depth + 1);
+                    if (child)
+                        node.children.push(child);
+                }
+                else if (kr.type === PDFObjectType.Reference) {
+                    const child = walkStructElement(kr, depth + 1);
+                    if (child)
+                        node.children.push(child);
+                }
+                // If kr is a Number, it's a MCID — leaf content reference, no children to add
+            }
+            return node;
+        };
+        // The root's /K entry contains the top-level structure elements
+        const rootK = stDict.entries.get('K');
+        if (!rootK)
+            return [];
+        const rootKResolved = resolve(rootK);
+        const nodes = [];
+        if (rootKResolved.type === PDFObjectType.Array) {
+            for (const childRef of rootKResolved.value) {
+                const child = walkStructElement(childRef, 0);
+                if (child)
+                    nodes.push(child);
+            }
+        }
+        else {
+            const child = walkStructElement(rootKResolved, 0);
+            if (child)
+                nodes.push(child);
+        }
+        return nodes;
+    }
+    /**
        * Describes the currently loaded document's available operations and
        * recommends workflows based on document characteristics.
        * Returns undefined if no document is loaded.
@@ -2844,12 +3353,14 @@ class IronDocuments {
         const operations = [
             'extractText', 'streamText', 'extractImages',
             'getAIFeatures', 'generateSemanticChunks', 'streamSemanticChunks',
+            'ingest', 'streamIngest',
             'search', 'getAnnotations', 'addAnnotation',
             'getFormFields', 'fillForm',
             'renderPage', 'renderPageToImage', 'buildTextLayer',
             'exportAs', 'save',
             'generateAPDFMetadata', 'generateAPDFBinary',
             'getMetadata', 'getPage', 'getAllPages', 'getNamedDestinations',
+            'getEmbeddedFiles', 'getPageLabels', 'getStructureTree', 'getOutline',
             'close', 'unloadPages', 'getMemoryStats',
             'describeDocument'
         ];
@@ -3470,6 +3981,48 @@ class IronDocuments {
                 },
                 required: ['version', 'flags', 'pdfEncrypted', 'metadataEncrypted', 'metadataOffset', 'metadataLength', 'pdfOffset', 'pdfLength', 'totalSize']
             },
+            // ── unified ingest types ──────────────────────────────────
+            IngestOptions: {
+                type: 'object',
+                description: 'Options for the unified ingest() / streamIngest() methods',
+                properties: {
+                    strategy: { type: 'string', enum: ['semantic', 'fixed', 'sliding', 'recursive'], default: 'semantic' },
+                    maxChunkSize: { type: 'number', minimum: 50, default: 1000 },
+                    overlapSize: { type: 'number', minimum: 0, default: 100 },
+                    includeStructure: { type: 'boolean', default: true },
+                    includePageText: { type: 'boolean', default: false },
+                    pageRange: { type: 'object', properties: { start: { type: 'number', minimum: 1 }, end: { type: 'number', minimum: 1 } } }
+                }
+            },
+            IngestResult: {
+                type: 'object',
+                description: 'Unified AI ingestion result with metadata, structure, chunks, and stats',
+                properties: {
+                    metadata: { description: 'PDF metadata' },
+                    documentType: { type: 'string' },
+                    summary: { type: 'string' },
+                    keywords: { type: 'array', items: { type: 'string' } },
+                    structure: { type: 'object', properties: { sections: { type: 'number' }, tables: { type: 'number' }, figures: { type: 'number' } } },
+                    chunks: { type: 'array', items: { $ref: '#/IngestChunk' } },
+                    pageTexts: { type: 'array', items: { type: 'object', properties: { page: { type: 'number' }, text: { type: 'string' } } } },
+                    stats: { type: 'object', properties: { pageCount: { type: 'number' }, fileSize: { type: 'number' }, totalChunks: { type: 'number' }, totalTokens: { type: 'number' }, processingTimeMs: { type: 'number' } } }
+                },
+                required: ['metadata', 'documentType', 'summary', 'keywords', 'structure', 'chunks', 'stats']
+            },
+            IngestChunk: {
+                type: 'object',
+                description: 'A semantic chunk from the unified ingest pipeline',
+                properties: {
+                    id: { type: 'string' },
+                    content: { type: 'string' },
+                    pages: { type: 'array', items: { type: 'number' } },
+                    type: { type: 'string' },
+                    tokenCount: { type: 'number', minimum: 0 },
+                    importance: { type: 'number', minimum: 0, maximum: 1 },
+                    keywords: { type: 'array', items: { type: 'string' } }
+                },
+                required: ['id', 'content', 'pages', 'type', 'tokenCount', 'importance', 'keywords']
+            },
             // ── agent skills & tools ────────────────────────────────────
             AgentTool: {
                 type: 'object',
@@ -3578,8 +4131,10 @@ class IronDocuments {
             schemas: IronDocuments.getJSONSchemas(),
             workflows: IronDocuments.getWorkflows(),
             agentGuidance: {
-                quickStart: 'Load a PDF with IronDocuments.fromFile(file) or IronDocuments.fromBuffer(buffer). Then call extractText(), getAIFeatures(), or generateSemanticChunks() as needed. For aPDF format, call generateAPDFMetadata() for JSON-LD or generateAPDFBinary() for the streaming binary container. Always call close() when done.',
+                quickStart: 'For fastest AI ingestion, call pdf.ingest() — one call returns metadata, structure, semantic chunks, and stats. For streaming, use pdf.streamIngest() which yields NDJSON records. Load a PDF with IronDocuments.fromFile(file) or IronDocuments.fromBuffer(buffer). Always call close() when done.',
                 bestPractices: [
+                    'Use ingest() for single-call AI-ready output (metadata + chunks + stats)',
+                    'Use streamIngest() for NDJSON streaming to pipelines or CLI',
                     'Use streaming APIs (streamText, streamSemanticChunks) for documents > 10MB',
                     'Set lazyLoad: true for documents > 50 pages',
                     'Set maxMemoryUsage for memory-constrained environments',
@@ -3611,7 +4166,7 @@ class IronDocuments {
                     overview: 'IronDocuments provides a runtime for AI agents to register skills (groups of callable tools), create secure contexts, and dispatch tool calls. 6 built-in skills with 24 tools are auto-registered on first use.',
                     security: 'Use AgentSecurityPolicy to control access: allowedTools/blockedTools for whitelisting/blacklisting, maxCallsPerSession for rate limiting, maxExecutionTimeMs for timeout enforcement, allowMutations to prevent document modification.',
                     middleware: 'Add AgentMiddleware to intercept tool calls: before() for validation/logging/auth, after() for result transformation, onError() for error handling. Middleware runs in registration order.',
-                    builtinSkills: 'Built-in skills: pdf-extraction (6 tools), pdf-analysis (4 tools), pdf-forms (3 tools), pdf-export (3 tools), apdf-format (4 tools), introspection (4 tools). All handlers call real library methods.',
+                    builtinSkills: 'Built-in skills: pdf-extraction (6 tools), pdf-analysis (5 tools incl. ingest), pdf-forms (3 tools), pdf-export (3 tools), apdf-format (4 tools), introspection (4 tools). All handlers call real library methods.',
                     customSkills: 'Register custom skills via IronDocuments.registerSkill(). Each skill has a unique id, tools array, and optional setup/teardown callbacks. Use activateSkills() on AgentContext to limit active skills.',
                     workflow: 'Create context: pdf.createAgentContext(options). Get schemas: ctx.getToolSchemas("openai"). Execute: ctx.executeTool({ name, arguments }). Check stats: ctx.getStats(). Close: ctx.close().'
                 }
@@ -3623,7 +4178,7 @@ class IronDocuments {
      */
     createAgentSession() {
         return {
-            sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+            sessionId: generateSecureId('session'),
             startedAt: Date.now(),
             documentPath: undefined,
             operationsPerformed: [],
@@ -3846,6 +4401,25 @@ class IronDocuments {
                         category: 'analysis',
                         requiresDocument: true,
                         handler: async (_args, ctx) => ctx.document.describeDocument()
+                    },
+                    {
+                        name: 'ingest',
+                        description: 'Unified single-call AI ingestion returning metadata, structure, chunks, and stats.',
+                        parameters: [
+                            { name: 'strategy', type: 'string', description: 'Chunking strategy', required: false },
+                            { name: 'maxChunkSize', type: 'number', description: 'Max tokens per chunk', required: false },
+                            { name: 'overlapSize', type: 'number', description: 'Token overlap between chunks', required: false },
+                            { name: 'includeStructure', type: 'boolean', description: 'Include structural analysis', required: false },
+                            { name: 'includePageText', type: 'boolean', description: 'Include per-page raw text', required: false }
+                        ],
+                        category: 'analysis',
+                        requiresDocument: true,
+                        handler: async (args, ctx) => {
+                            const result = await ctx.document.ingest(args);
+                            ctx.session.chunksProcessed += result.chunks.length;
+                            ctx.session.tokensEstimated += result.stats.totalTokens;
+                            return result;
+                        }
                     }
                 ]
             },
@@ -4161,6 +4735,38 @@ class IronDocuments {
                 example: "for await (const chunk of pdf.streamSemanticChunks()) { embed(chunk); }"
             },
             {
+                name: 'ingest',
+                description: 'Unified single-call AI ingestion. Returns metadata, document type, summary, keywords, structure, semantic chunks, and processing stats in one pass.',
+                parameters: [
+                    { name: 'strategy', type: 'string', description: 'Chunking strategy', required: false, enum: ['semantic', 'fixed', 'sliding', 'recursive'] },
+                    { name: 'maxChunkSize', type: 'number', description: 'Max tokens per chunk', required: false, minimum: 50, default: 1000 },
+                    { name: 'overlapSize', type: 'number', description: 'Token overlap between chunks', required: false, minimum: 0, default: 100 },
+                    { name: 'includeStructure', type: 'boolean', description: 'Include structural analysis', required: false, default: true },
+                    { name: 'includePageText', type: 'boolean', description: 'Include per-page raw text', required: false, default: false },
+                    { name: 'pageRange', type: 'object', description: 'Pages to process {start, end}', required: false }
+                ],
+                returnType: 'IngestResult',
+                category: 'analysis',
+                streaming: false,
+                requiresDocument: true,
+                example: "const result = await pdf.ingest({ strategy: 'semantic', maxChunkSize: 1000 });"
+            },
+            {
+                name: 'streamIngest',
+                description: 'Streaming AI ingestion yielding NDJSON records: header (metadata + structure) → chunk records → footer (stats).',
+                parameters: [
+                    { name: 'strategy', type: 'string', description: 'Chunking strategy', required: false, enum: ['semantic', 'fixed', 'sliding', 'recursive'] },
+                    { name: 'maxChunkSize', type: 'number', description: 'Max tokens per chunk', required: false, minimum: 50, default: 1000 },
+                    { name: 'overlapSize', type: 'number', description: 'Token overlap between chunks', required: false, minimum: 0, default: 100 },
+                    { name: 'includeStructure', type: 'boolean', description: 'Include structural analysis in header', required: false, default: true }
+                ],
+                returnType: 'AsyncGenerator<Record<string, any>>',
+                category: 'analysis',
+                streaming: true,
+                requiresDocument: true,
+                example: "for await (const record of pdf.streamIngest()) { process.stdout.write(JSON.stringify(record) + '\\n'); }"
+            },
+            {
                 name: 'search',
                 description: 'Search for text within the document, returning matches with page numbers and positions.',
                 parameters: [
@@ -4469,7 +5075,7 @@ class IronDocuments {
                     license: 'AGPL-3.0-or-later',
                     type: 'library',
                     purl: 'pkg:npm/irondocuments@1.0.0',
-                    supplier: 'Nervosys, LLC'
+                    supplier: 'NERVOSYS, LLC'
                 }
                 // Zero external runtime dependencies — single-file architecture
             ]
@@ -4940,6 +5546,53 @@ function _formatSrtTime(totalSeconds) {
     const ms = Math.round((totalSeconds % 1) * 1000);
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
 }
+/**
+ * Escape a string so it matches literally inside a regular expression.
+ *
+ * Anything taken from a document is attacker-controlled, and interpolating it
+ * into a pattern hands the attacker the regex engine: metacharacters change
+ * what is matched, an unbalanced bracket throws where nothing catches it, and
+ * a nested quantifier turns a linear scan into a catastrophic one over text
+ * that may be megabytes. Author metadata reaches a pattern this way (CWE-1333).
+ */
+function escapeRegExp(literal) {
+    return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+/**
+ * The longest user-supplied regular expression `search()` will compile.
+ *
+ * A bound on the pattern is not a bound on its running time -- `(a+)+$` is
+ * nine characters -- so this is a first line only. The match loop carries a
+ * deadline as well (CWE-1333).
+ */
+const MAX_SEARCH_PATTERN_LENGTH = 1000;
+/** How long one `search()` may spend running a user-supplied pattern. */
+const SEARCH_TIME_BUDGET_MS = 2000;
+/**
+ * Generate a secure random ID string using crypto APIs (CWE-338 mitigation).
+ * Falls back to Math.random() only in environments without crypto support.
+ */
+function generateSecureId(prefix) {
+    const timestamp = Date.now();
+    let random;
+    try {
+        if (typeof globalThis !== 'undefined' && globalThis.crypto?.getRandomValues) {
+            const bytes = new Uint8Array(6);
+            globalThis.crypto.getRandomValues(bytes);
+            random = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+        }
+        else {
+            // Node.js fallback
+            const { randomBytes } = require('crypto');
+            random = randomBytes(6).toString('hex');
+        }
+    }
+    catch {
+        // Last resort fallback for constrained environments
+        random = Math.random().toString(36).substring(2, 14);
+    }
+    return `${prefix}_${timestamp}_${random}`;
+}
 // ============================================================================
 // PDF Parser Implementation
 // ============================================================================
@@ -5301,6 +5954,32 @@ class PDFParser {
                 else if (!authResult.authenticated) {
                     throw new Error('Invalid password for encrypted PDF');
                 }
+            }
+        }
+        // Detect catalog-level features
+        metadata.hasPageLabels = catalog.entries.has('PageLabels');
+        metadata.hasStructureTree = catalog.entries.has('StructTreeRoot');
+        // Check for MarkInfo
+        const markInfoRef = catalog.entries.get('MarkInfo');
+        if (markInfoRef) {
+            const markObj = markInfoRef.type === PDFObjectType.Reference
+                ? this.parseIndirectObject(markInfoRef.value.objectNumber, markInfoRef.value.generationNumber, xref)
+                : markInfoRef;
+            if (markObj.type === PDFObjectType.Dictionary) {
+                const markedEntry = markObj.value.entries.get('Marked');
+                if (markedEntry?.type === PDFObjectType.Boolean) {
+                    metadata.marked = markedEntry.value;
+                }
+            }
+        }
+        // Check for embedded files
+        const namesRef = catalog.entries.get('Names');
+        if (namesRef) {
+            const namesObj = namesRef.type === PDFObjectType.Reference
+                ? this.parseIndirectObject(namesRef.value.objectNumber, namesRef.value.generationNumber, xref)
+                : namesRef;
+            if (namesObj.type === PDFObjectType.Dictionary) {
+                metadata.hasEmbeddedFiles = namesObj.value.entries.has('EmbeddedFiles');
             }
         }
         return metadata;
@@ -8188,6 +8867,7 @@ class TextExtractor {
             // Current graphics state
             let currentState = {
                 textMatrix: [1, 0, 0, 1, 0, 0],
+                ctm: [1, 0, 0, 1, 0, 0],
                 fontSize: 12,
                 fontName: 'Helvetica',
                 textLeading: 0,
@@ -8198,6 +8878,10 @@ class TextExtractor {
                 renderingMode: 0,
                 fillColor: { r: 0, g: 0, b: 0 }
             };
+            // Graphics state stack for q/Q save/restore
+            const stateStack = [];
+            // Marked content stack for BMC/BDC/EMC nesting
+            const markedContentStack = [];
             // Line matrix for T* operator
             let lineMatrix = [1, 0, 0, 1, 0, 0];
             // Debug: log text positioning operators
@@ -8310,6 +8994,132 @@ class TextExtractor {
                             currentState.textLeading = op.operands[0];
                         }
                         break;
+                    case 'Tc': // Set character spacing
+                        if (op.operands.length >= 1) {
+                            currentState.charSpace = op.operands[0];
+                        }
+                        break;
+                    case 'Tw': // Set word spacing
+                        if (op.operands.length >= 1) {
+                            currentState.wordSpace = op.operands[0];
+                        }
+                        break;
+                    case 'Tz': // Set horizontal scaling
+                        if (op.operands.length >= 1) {
+                            currentState.horizontalScaling = op.operands[0];
+                        }
+                        break;
+                    case 'Tr': // Set text rendering mode
+                        if (op.operands.length >= 1) {
+                            currentState.renderingMode = op.operands[0];
+                        }
+                        break;
+                    case 'Ts': // Set text rise
+                        if (op.operands.length >= 1) {
+                            currentState.textRise = op.operands[0];
+                        }
+                        break;
+                    // Graphics state operators
+                    case 'q': // Save graphics state
+                        stateStack.push({
+                            ...currentState,
+                            textMatrix: [...currentState.textMatrix],
+                            ctm: [...currentState.ctm],
+                            fillColor: { ...currentState.fillColor },
+                        });
+                        break;
+                    case 'Q': // Restore graphics state
+                        if (stateStack.length > 0) {
+                            currentState = stateStack.pop();
+                        }
+                        break;
+                    case 'cm': // Concatenate matrix (update CTM)
+                        if (op.operands.length >= 6) {
+                            const [a, b, c, d, e, f] = op.operands;
+                            const prev = currentState.ctm;
+                            currentState.ctm = [
+                                prev[0] * a + prev[2] * b,
+                                prev[1] * a + prev[3] * b,
+                                prev[0] * c + prev[2] * d,
+                                prev[1] * c + prev[3] * d,
+                                prev[0] * e + prev[2] * f + prev[4],
+                                prev[1] * e + prev[3] * f + prev[5],
+                            ];
+                        }
+                        break;
+                    // Fill color operators (track for text style)
+                    case 'g': // Grayscale fill
+                        if (op.operands.length >= 1) {
+                            const gray = Math.round(op.operands[0] * 255);
+                            currentState.fillColor = { r: gray, g: gray, b: gray };
+                        }
+                        break;
+                    case 'rg': // RGB fill
+                        if (op.operands.length >= 3) {
+                            currentState.fillColor = {
+                                r: Math.round(op.operands[0] * 255),
+                                g: Math.round(op.operands[1] * 255),
+                                b: Math.round(op.operands[2] * 255),
+                            };
+                        }
+                        break;
+                    case 'k': // CMYK fill
+                        if (op.operands.length >= 4) {
+                            const ck = op.operands[0];
+                            const mk = op.operands[1];
+                            const yk = op.operands[2];
+                            const kk = op.operands[3];
+                            currentState.fillColor = {
+                                r: Math.round(255 * (1 - Math.min(1, ck * (1 - kk) + kk))),
+                                g: Math.round(255 * (1 - Math.min(1, mk * (1 - kk) + kk))),
+                                b: Math.round(255 * (1 - Math.min(1, yk * (1 - kk) + kk))),
+                            };
+                        }
+                        break;
+                    // Marked content operators
+                    case 'BMC': // Begin marked content (no properties)
+                        {
+                            const tag = op.operands[0] || '';
+                            markedContentStack.push({ tag });
+                            currentState.markedContentTag = tag;
+                            currentState.markedContentProps = undefined;
+                        }
+                        break;
+                    case 'BDC': // Begin marked content with properties
+                        {
+                            const bdcTag = op.operands[0] || '';
+                            let bdcProps;
+                            if (op.operands.length >= 2 && typeof op.operands[1] === 'object' && op.operands[1] !== null) {
+                                bdcProps = {};
+                                const propObj = op.operands[1];
+                                if (propObj.entries && propObj.entries instanceof Map) {
+                                    for (const [k, v] of propObj.entries) {
+                                        bdcProps[k] = v.value ?? v;
+                                    }
+                                }
+                                else if (typeof propObj === 'object') {
+                                    for (const k of Object.keys(propObj)) {
+                                        bdcProps[k] = propObj[k];
+                                    }
+                                }
+                            }
+                            markedContentStack.push({ tag: bdcTag, props: bdcProps });
+                            currentState.markedContentTag = bdcTag;
+                            currentState.markedContentProps = bdcProps;
+                        }
+                        break;
+                    case 'EMC': // End marked content
+                        markedContentStack.pop();
+                        if (markedContentStack.length > 0) {
+                            const top = markedContentStack[markedContentStack.length - 1];
+                            currentState.markedContentTag = top.tag;
+                            currentState.markedContentProps = top.props;
+                        }
+                        else {
+                            currentState.markedContentTag = undefined;
+                            currentState.markedContentProps = undefined;
+                        }
+                        break;
                 }
             }
             PerformanceMonitor.endOperation(metric);
@@ -8325,7 +9135,7 @@ class TextExtractor {
         // Calculate text metrics
         const width = text.length * state.fontSize * 0.5; // Approximate
         const height = state.fontSize;
-        return {
+        const tc = {
             text: text,
             x: state.textMatrix[4],
             y: page.height - state.textMatrix[5], // Flip Y coordinate
@@ -8340,10 +9150,30 @@ class TextExtractor {
                 italic: state.fontName.toLowerCase().includes('italic'),
                 underline: false,
                 strikethrough: false,
-                color: state.fillColor
+                color: state.fillColor ? { ...state.fillColor } : { r: 0, g: 0, b: 0 }
             },
             pageNumber: page.pageNumber
         };
+        // Expose layout context when non-default
+        if (state.charSpace !== 0)
+            tc.charSpacing = state.charSpace;
+        if (state.wordSpace !== 0)
+            tc.wordSpacing = state.wordSpace;
+        if (state.textLeading !== 0)
+            tc.textLeading = state.textLeading;
+        if (state.horizontalScaling !== 100)
+            tc.horizontalScaling = state.horizontalScaling;
+        if (state.textRise !== 0)
+            tc.textRise = state.textRise;
+        if (state.renderingMode !== 0)
+            tc.renderingMode = state.renderingMode;
+        if (state.markedContentTag) {
+            tc.markedContent = {
+                tag: state.markedContentTag,
+                properties: state.markedContentProps,
+            };
+        }
+        return tc;
     }
     decodeTextWithFont(rawText, state) {
         const font = state.fontResource;
@@ -9109,6 +9939,18 @@ class PretextLayout {
                 return { width };
             }
         };
+    }
+    /**
+     * Public API: measure text width via Canvas, with caching.
+     * Useful as a fallback for glyph advance calculation during rendering
+     * when PDF font metrics are unavailable.
+     *
+     * @param text  - The string to measure.
+     * @param font  - CSS font shorthand (e.g. `'12px Arial'`).
+     * @returns Width in CSS pixels at the given font size.
+     */
+    static measure(text, font) {
+        return PretextLayout._measure(text, font);
     }
     /** Measure text width via Canvas, with caching. */
     static _measure(text, font) {
@@ -10743,6 +11585,9 @@ class PDFSearcher {
         const queryLower = query.toLowerCase();
         let regex = null;
         if (options?.regex) {
+            if (query.length > MAX_SEARCH_PATTERN_LENGTH) {
+                throw new Error(`Regex pattern exceeds ${MAX_SEARCH_PATTERN_LENGTH} characters`);
+            }
             try {
                 regex = new RegExp(query, options.caseSensitive ? 'g' : 'gi');
             }
@@ -10750,6 +11595,12 @@ class PDFSearcher {
                 throw new Error(`Invalid regex pattern: ${query}`);
             }
         }
+        // A deadline rather than a pattern analysis. Whether a regex backtracks
+        // catastrophically is not something a length check can decide, and the
+        // engine cannot be interrupted once inside a single `exec`; what this
+        // bounds is the loop around it, which is where a pattern matching emptily
+        // or near-emptily spends a document's worth of time.
+        const searchDeadline = Date.now() + SEARCH_TIME_BUDGET_MS;
         for (const block of text) {
             const content = options?.caseSensitive ? block.text : block.text.toLowerCase();
             const searchQuery = options?.caseSensitive ? query : queryLower;
@@ -10763,6 +11614,13 @@ class PDFSearcher {
                         index: match.index,
                         length: match[0].length
                     });
+                    // An empty match does not advance `lastIndex`, so without this a
+                    // pattern such as `a*` never terminates.
+                    if (match[0].length === 0)
+                        regex.lastIndex++;
+                    if (Date.now() > searchDeadline) {
+                        throw new Error('Regex search exceeded its time budget');
+                    }
                 }
             }
             else if (options?.wholeWord) {
@@ -11279,6 +12137,136 @@ class AnnotationExtractor {
                 };
             }
         }
+        // Parse FileAttachment-specific properties
+        if (annotation.type === AnnotationType.FileAttachment) {
+            this.parseFileAttachmentProperties(annotation, dict);
+        }
+        // Parse Sound-specific properties
+        if (annotation.type === AnnotationType.Sound) {
+            this.parseSoundProperties(annotation, dict);
+        }
+        // Parse Movie-specific properties
+        if (annotation.type === AnnotationType.Movie) {
+            this.parseMovieProperties(annotation, dict);
+        }
+    }
+    resolveObj(obj) {
+        if (obj && obj.type === PDFObjectType.Reference) {
+            const ref = obj.value;
+            const parser = this.pdf.parser;
+            const xref = this.pdf.xrefTable;
+            if (parser && xref) {
+                return parser.parseIndirectObject(ref.objectNumber, ref.generationNumber, xref);
+            }
+        }
+        return obj;
+    }
+    parseFileAttachmentProperties(annotation, dict) {
+        const fsRef = dict.entries.get('FS');
+        if (!fsRef)
+            return;
+        const fsObj = this.resolveObj(fsRef);
+        if (fsObj.type !== PDFObjectType.Dictionary)
+            return;
+        const fsDict = fsObj.value;
+        const spec = {
+            name: this.getStringFromDict(fsDict, 'F')
+                || this.getStringFromDict(fsDict, 'UF')
+                || this.getStringFromDict(fsDict, 'Desc')
+                || 'unknown',
+            description: this.getStringFromDict(fsDict, 'Desc'),
+        };
+        // Extract the embedded file stream from /EF dictionary
+        const efRef = fsDict.entries.get('EF');
+        if (efRef) {
+            const efObj = this.resolveObj(efRef);
+            if (efObj.type === PDFObjectType.Dictionary) {
+                const efDict = efObj.value;
+                const fileStreamRef = efDict.entries.get('F') || efDict.entries.get('UF');
+                if (fileStreamRef) {
+                    const fileStreamObj = this.resolveObj(fileStreamRef);
+                    if (fileStreamObj.type === PDFObjectType.Dictionary) {
+                        const streamDict = fileStreamObj.value;
+                        // Extract Params if available
+                        const paramsRef = streamDict.entries.get('Params');
+                        if (paramsRef) {
+                            const paramsObj = this.resolveObj(paramsRef);
+                            if (paramsObj.type === PDFObjectType.Dictionary) {
+                                const paramsDict = paramsObj.value;
+                                spec.size = this.getNumberFromDict(paramsDict, 'Size');
+                                const checksum = this.getStringFromDict(paramsDict, 'CheckSum');
+                                if (checksum)
+                                    spec.checksum = checksum;
+                                const creationStr = this.getStringFromDict(paramsDict, 'CreationDate');
+                                if (creationStr) {
+                                    spec.creationDate = this.pdf.parser?.parsePDFDate?.(creationStr);
+                                }
+                                const modStr = this.getStringFromDict(paramsDict, 'ModDate');
+                                if (modStr) {
+                                    spec.modificationDate = this.pdf.parser?.parsePDFDate?.(modStr);
+                                }
+                            }
+                        }
+                        // Extract subtype (MIME type)
+                        const subtypeObj = streamDict.entries.get('Subtype');
+                        if (subtypeObj?.type === PDFObjectType.Name) {
+                            spec.mimeType = subtypeObj.value.replace('#2F', '/');
+                        }
+                    }
+                    // Try to get raw data from the stream object
+                    if (fileStreamObj.type === PDFObjectType.Stream) {
+                        spec.data = fileStreamObj.value;
+                    }
+                }
+            }
+        }
+        annotation.fileSpec = spec;
+    }
+    parseSoundProperties(annotation, dict) {
+        const soundRef = dict.entries.get('Sound');
+        if (!soundRef)
+            return;
+        const soundObj = this.resolveObj(soundRef);
+        const spec = {};
+        if (soundObj.type === PDFObjectType.Dictionary) {
+            const soundDict = soundObj.value;
+            spec.samplingRate = this.getNumberFromDict(soundDict, 'R');
+            spec.channels = this.getNumberFromDict(soundDict, 'C') || 1;
+            spec.bitsPerSample = this.getNumberFromDict(soundDict, 'B') || 8;
+            spec.encoding = this.getStringFromDict(soundDict, 'E') || 'Raw';
+        }
+        else if (soundObj.type === PDFObjectType.Stream) {
+            spec.data = soundObj.value;
+        }
+        annotation.soundSpec = spec;
+    }
+    parseMovieProperties(annotation, dict) {
+        const movieRef = dict.entries.get('Movie');
+        if (!movieRef)
+            return;
+        const movieObj = this.resolveObj(movieRef);
+        const spec = {};
+        if (movieObj.type === PDFObjectType.Dictionary) {
+            const movieDict = movieObj.value;
+            // /F entry is the file specification for the movie file
+            const fRef = movieDict.entries.get('F');
+            if (fRef) {
+                const fObj = this.resolveObj(fRef);
+                if (fObj.type === PDFObjectType.String) {
+                    spec.fileName = fObj.value;
+                }
+                else if (fObj.type === PDFObjectType.Dictionary) {
+                    const fDict = fObj.value;
+                    spec.fileName = this.getStringFromDict(fDict, 'F')
+                        || this.getStringFromDict(fDict, 'UF');
+                }
+            }
+            const posterObj = movieDict.entries.get('Poster');
+            if (posterObj?.type === PDFObjectType.Boolean) {
+                spec.poster = posterObj.value;
+            }
+        }
+        annotation.movieSpec = spec;
     }
     parseColor(colorArray) {
         if (colorArray.length === 1) {
@@ -13387,6 +14375,16 @@ class PDFGraphicsExecutor {
             this.ctx.font = `${fontStyle}${Math.abs(fontSize)}px ${canvasFont}`;
         }
     }
+    /** Check whether the current font resource has explicit width data from the PDF. */
+    fontHasExplicitWidths() {
+        const font = this.currentFontResource;
+        if (!font)
+            return false;
+        return !!((font.cidWidths && font.cidWidths.size > 0) ||
+            (font.widths && font.widths.length > 0) ||
+            font.defaultWidth !== undefined ||
+            font.missingWidth !== undefined);
+    }
     showText(operands) {
         if (operands.length === 0)
             return;
@@ -13471,7 +14469,13 @@ class PDFGraphicsExecutor {
                     this.ctx.fillText(displayChar, renderX, renderY);
                 }
             }
-            const glyphWidth = PDFGlyphMetrics.getCharWidth(charCode, this.currentFontResource, fontSize);
+            const glyphWidth = this.fontHasExplicitWidths()
+                ? PDFGlyphMetrics.getCharWidth(charCode, this.currentFontResource, fontSize)
+                : shouldRender && displayChar
+                    // Use PretextLayout's cached canvas measurement for accurate advance
+                    // when the PDF lacks embedded font metrics.
+                    ? PretextLayout.measure(displayChar, (this.textState.fontStyle || '') + effectiveFontSize + 'px ' + this.textState.font) / tmScale
+                    : PDFGlyphMetrics.getCharWidth(charCode, this.currentFontResource, fontSize);
             let advance = glyphWidth + charSpace;
             if (charCode === 32)
                 advance += wordSpace;
@@ -14223,6 +15227,13 @@ class PDFRenderer {
         // Simple approach: Draw graphics operators directly to canvas
         // Native TypeScript rendering implementation
         await this.renderPageContent(ctx, page, scale);
+        // Render annotations and form fields if enabled
+        if (this.options?.renderAnnotations !== false) {
+            await this.renderAnnotations(ctx, page);
+        }
+        if (this.options?.renderText !== false) {
+            await this.renderForms(ctx, page);
+        }
         ctx.restore();
     }
     async renderPageContent(ctx, page, scale) {
@@ -14362,15 +15373,16 @@ class PDFRenderer {
                         if (inText && op.operands.length > 0) {
                             const text = PDFTextDecoder.decode(op.operands[0]);
                             if (text) {
+                                const fontStr = `${Math.abs(textState.fontSize)}px ${textState.font}`;
                                 ctx.save();
                                 const tm = textState.matrix;
-                                ctx.font = `${Math.abs(textState.fontSize)}px ${textState.font}`;
+                                ctx.font = fontStr;
                                 ctx.fillStyle = '#000000';
                                 ctx.transform(tm[0], tm[1], tm[2], tm[3], tm[4], tm[5]);
                                 ctx.scale(1, -1);
                                 ctx.fillText(text, 0, -(textState.rise || 0));
                                 ctx.restore();
-                                const w = text.length * textState.fontSize * 0.5;
+                                const w = PretextLayout.measure(text, fontStr);
                                 textState.matrix[4] += w * textState.matrix[0];
                                 textState.matrix[5] += w * textState.matrix[1];
                             }
@@ -14382,15 +15394,16 @@ class PDFRenderer {
                                 if (typeof item === 'string') {
                                     const text = PDFTextDecoder.decode(item);
                                     if (text) {
+                                        const fontStr = `${Math.abs(textState.fontSize)}px ${textState.font}`;
                                         ctx.save();
                                         const tm = textState.matrix;
-                                        ctx.font = `${Math.abs(textState.fontSize)}px ${textState.font}`;
+                                        ctx.font = fontStr;
                                         ctx.fillStyle = '#000000';
                                         ctx.transform(tm[0], tm[1], tm[2], tm[3], tm[4], tm[5]);
                                         ctx.scale(1, -1);
                                         ctx.fillText(text, 0, -(textState.rise || 0));
                                         ctx.restore();
-                                        const w = text.length * textState.fontSize * 0.5;
+                                        const w = PretextLayout.measure(text, fontStr);
                                         textState.matrix[4] += w * textState.matrix[0];
                                         textState.matrix[5] += w * textState.matrix[1];
                                     }
@@ -14498,6 +15511,29 @@ class PDFRenderer {
                 ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
                 ctx.stroke();
                 break;
+            case AnnotationType.FreeText:
+                if (annotation.contents) {
+                    const fontSize = 12;
+                    const fontStr = `${fontSize}px Arial`;
+                    const lineHeight = fontSize * 1.2;
+                    const padding = 4;
+                    const boxX = annotation.rect.x;
+                    const boxY = page.height - annotation.rect.y - annotation.rect.height;
+                    // Use PretextLayout for accurate multiline text wrapping
+                    const prepared = PretextLayout.prepareWithSegments(annotation.contents, fontStr);
+                    const result = PretextLayout.layoutWithLines(prepared, annotation.rect.width - padding * 2, lineHeight);
+                    ctx.fillStyle = annotation.color
+                        ? `rgba(${annotation.color.r}, ${annotation.color.g}, ${annotation.color.b}, 1)`
+                        : '#000000';
+                    ctx.font = fontStr;
+                    for (let i = 0; i < result.lines.length; i++) {
+                        const y = boxY + padding + lineHeight * (i + 1);
+                        if (y > boxY + annotation.rect.height)
+                            break; // clip to rect
+                        ctx.fillText(result.lines[i].text, boxX + padding, y);
+                    }
+                }
+                break;
         }
         ctx.restore();
     }
@@ -14516,9 +15552,28 @@ class PDFRenderer {
         // Draw field value
         if (field.value) {
             ctx.fillStyle = '#000000';
-            ctx.font = '12px Arial';
+            const fontSize = 12;
+            const fontStr = `${fontSize}px Arial`;
+            ctx.font = fontStr;
             if (field.type === FormFieldType.Text) {
-                ctx.fillText(String(field.value), field.rect.x + 2, page.height - field.rect.y - 4);
+                const text = String(field.value);
+                const padding = 2;
+                const baseY = page.height - field.rect.y - field.rect.height;
+                const lineHeight = fontSize * 1.2;
+                if (field.multiline) {
+                    // Use PretextLayout for multiline text wrapping within the field bounds
+                    const prepared = PretextLayout.prepareWithSegments(text, fontStr);
+                    const result = PretextLayout.layoutWithLines(prepared, field.rect.width - padding * 2, lineHeight);
+                    for (let i = 0; i < result.lines.length; i++) {
+                        const y = baseY + padding + lineHeight * (i + 1);
+                        if (y > page.height - field.rect.y)
+                            break; // clip to field bounds
+                        ctx.fillText(result.lines[i].text, field.rect.x + padding, y);
+                    }
+                }
+                else {
+                    ctx.fillText(text, field.rect.x + padding, baseY + lineHeight);
+                }
             }
             else if (field.type === FormFieldType.Button && field.value) {
                 // Draw checkmark for checked checkbox
@@ -15893,7 +16948,7 @@ class AnnotationPersistence {
     /** Create a text annotation (sticky note). */
     createTextAnnotation(pageNumber, x, y, contents, options) {
         const annotation = {
-            id: `annot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            id: generateSecureId('annot'),
             type: AnnotationType.Text,
             rect: { x, y, width: 24, height: 24 },
             pageNumber,
@@ -15910,7 +16965,7 @@ class AnnotationPersistence {
     /** Create a highlight annotation. */
     createHighlightAnnotation(pageNumber, rect, options) {
         const annotation = {
-            id: `annot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            id: generateSecureId('annot'),
             type: AnnotationType.Highlight,
             rect,
             pageNumber,
@@ -15927,7 +16982,7 @@ class AnnotationPersistence {
     /** Create a free-text annotation. */
     createFreeTextAnnotation(pageNumber, rect, text, options) {
         const annotation = {
-            id: `annot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            id: generateSecureId('annot'),
             type: AnnotationType.FreeText,
             rect,
             pageNumber,
@@ -15944,7 +16999,7 @@ class AnnotationPersistence {
     /** Create an ink (freehand drawing) annotation. */
     createInkAnnotation(pageNumber, rect, options) {
         const annotation = {
-            id: `annot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            id: generateSecureId('annot'),
             type: AnnotationType.Ink,
             rect,
             pageNumber,
@@ -17355,7 +18410,7 @@ class APDFMetadataGenerator {
                 const searchEnd = Math.min(fullText.length, searchStart + vicinity);
                 const nearText = nameIdx >= 0 ? fullText.slice(searchStart, searchEnd) : '';
                 // ORCID — look near author name
-                const orcidPattern = new RegExp(firstName + '[\\s\\S]{0,200}(\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX])', 'i');
+                const orcidPattern = new RegExp(escapeRegExp(firstName) + '[\\s\\S]{0,200}(\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX])', 'i');
                 const orcidMatch = fullText.match(orcidPattern);
                 if (orcidMatch)
                     author.orcid = orcidMatch[1];

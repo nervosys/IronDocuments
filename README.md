@@ -26,7 +26,7 @@ ships a CLI and an MCP server built for agents. See
 - **Complete Extraction** — Text, images, forms, annotations, and metadata
 - **Zero Dependencies** — Single TypeScript file (`irondocuments.ts`), no runtime deps
 - **Seventeen Formats** *(Rust engine)* — PDF, Word, Excel and PowerPoint (modern and legacy), OpenDocument, EPUB, HTML, Markdown, CSV, RTF, text and ADF, all reaching the same structured model
-- **Agent-Native CLI** *(Rust engine)* — `apdf` with JSON output throughout, a JSON-LD ontology for discovery, and an MCP server
+- **Agent-Native CLI** *(Rust engine)* — `idoc` with JSON output throughout, a JSON-LD ontology for discovery, and an MCP server
 - **Memory Efficient** — Configurable limits, lazy loading, and automatic cleanup
 - **Universal** — Works in browsers and Node.js
 - **Theme Support** — Dark/light mode rendering for viewer UIs
@@ -494,7 +494,7 @@ console.log(`Recommended workflows: ${report.recommendedWorkflows}`);
 
 ## CLI
 
-IronDocuments ships a full-featured CLI (`apdf` / `irondocuments`):
+IronDocuments ships a full-featured CLI (`irondoc` / `idoc`):
 
 ```bash
 # Text extraction
@@ -522,7 +522,7 @@ irondoc generate -i paper.pdf -o paper.apdf  # aPDF format
 
 ## Rust CLI — multi-format document engine
 
-A native Rust CLI (`apdf`) is available in `irondocuments-rs/` for fast extraction
+A native Rust CLI (`idoc`) is available in `irondocuments-rs/` for fast extraction
 without a Node.js runtime. It is not PDF-only: the same commands read Word,
 Excel and PowerPoint in both their modern and their 97-2003 forms, the three
 OpenDocument formats, EPUB, RTF, HTML, Markdown, CSV, plain text and ADF.
@@ -737,7 +737,7 @@ traversal and symlinks planted inside a root are both refused; writes
 canonicalize the parent and re-check any pre-existing target, which may itself
 be a symlink pointing out.
 
-**The CLI is deliberately not confined.** A person running `apdf` already has a
+**The CLI is deliberately not confined.** A person running `idoc` already has a
 shell, so `irondoc text /etc/passwd` grants nothing `cat` does not. The boundary
 exists only where a model picks the path.
 

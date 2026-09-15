@@ -1,15 +1,18 @@
 /**
- * AgenticPDF - Browser Bundle
+ * IronDocuments - Browser Bundle
  * Modern, TypeScript-native PDF processing library
  * Version: 1.0.1
- * Compiled: 2026-03-31T05:39:00.901Z
+ * Compiled: 2026-09-15T05:55:29.083Z
  */
 
 (function(global) {
     'use strict';
     
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 NERVOSYS, LLC. Dual-licensed under the GNU AGPLv3 or a
+// commercial license; see LICENSE and LICENSE-AGPL.txt.
 /**
- * AgenticPDF - Complete TypeScript-native PDF processing library
+ * IronDocuments - Complete TypeScript-native PDF processing library
  * with modern streaming, AI integration, and performance optimizations
  */
 var AnnotationType;
@@ -252,7 +255,7 @@ class MemoryPool {
 // ============================================================================
 // Core PDF Processing Classes
 // ============================================================================
-class AgenticPDF {
+class IronDocuments {
     constructor(options = {}) {
         this.options = options;
         this.pages = new Map();
@@ -264,64 +267,64 @@ class AgenticPDF {
         }
     }
     /**
-     * Create an AgenticPDF instance from a File or Blob.
+     * Create an IronDocuments instance from a File or Blob.
      * @param file - The File or Blob containing PDF data
      * @param options - Configuration options for PDF processing
-     * @returns A loaded AgenticPDF instance ready for operations
+     * @returns A loaded IronDocuments instance ready for operations
      */
     static async fromFile(file, options) {
-        const pdf = new AgenticPDF(options);
+        const pdf = new IronDocuments(options);
         await pdf.loadFromFile(file);
         return pdf;
     }
     /**
-     * Create an AgenticPDF instance from a URL.
+     * Create an IronDocuments instance from a URL.
      * @param url - URL pointing to the PDF document
      * @param options - Configuration options for PDF processing
-     * @returns A loaded AgenticPDF instance ready for operations
+     * @returns A loaded IronDocuments instance ready for operations
      */
     /**
-     * Create an AgenticPDF instance from a URL.
+     * Create an IronDocuments instance from a URL.
      * @param url - URL pointing to the PDF document
      * @param options - Configuration options for PDF processing
-     * @returns A loaded AgenticPDF instance ready for operations
+     * @returns A loaded IronDocuments instance ready for operations
      */
     static async fromUrl(url, options) {
-        const pdf = new AgenticPDF(options);
+        const pdf = new IronDocuments(options);
         await pdf.loadFromUrl(url);
         return pdf;
     }
     /**
-     * Create an AgenticPDF instance from an ArrayBuffer.
+     * Create an IronDocuments instance from an ArrayBuffer.
      * @param buffer - Raw PDF data as an ArrayBuffer
      * @param options - Configuration options for PDF processing
-     * @returns A loaded AgenticPDF instance ready for operations
+     * @returns A loaded IronDocuments instance ready for operations
      */
     /**
-     * Create an AgenticPDF instance from an ArrayBuffer.
+     * Create an IronDocuments instance from an ArrayBuffer.
      * @param buffer - Raw PDF data as an ArrayBuffer
      * @param options - Configuration options for PDF processing
-     * @returns A loaded AgenticPDF instance ready for operations
+     * @returns A loaded IronDocuments instance ready for operations
      */
     static async fromBuffer(buffer, options) {
-        const pdf = new AgenticPDF(options);
+        const pdf = new IronDocuments(options);
         await pdf.loadFromBuffer(buffer);
         return pdf;
     }
     /**
-     * Create an AgenticPDF instance from a ReadableStream for progressive loading.
+     * Create an IronDocuments instance from a ReadableStream for progressive loading.
      * @param stream - ReadableStream of PDF data chunks
      * @param options - Configuration options for PDF processing
-     * @returns An AgenticPDF instance that processes data as it arrives
+     * @returns An IronDocuments instance that processes data as it arrives
      */
     /**
-     * Create an AgenticPDF instance from a ReadableStream for progressive loading.
+     * Create an IronDocuments instance from a ReadableStream for progressive loading.
      * @param stream - ReadableStream of PDF data chunks
      * @param options - Configuration options for PDF processing
-     * @returns An AgenticPDF instance that processes data as it arrives
+     * @returns An IronDocuments instance that processes data as it arrives
      */
     static fromStream(stream, options) {
-        const pdf = new AgenticPDF(options);
+        const pdf = new IronDocuments(options);
         pdf.loadFromStream(stream);
         return pdf;
     }
@@ -370,7 +373,7 @@ class AgenticPDF {
         }
         // SSRF protection: block private/internal IP ranges
         const hostname = parsedUrl.hostname;
-        if (AgenticPDF.isPrivateHost(hostname)) {
+        if (IronDocuments.isPrivateHost(hostname)) {
             throw new Error('SSRF protection: requests to private/internal addresses are not allowed');
         }
         const response = await fetch(url, { redirect: 'manual' });
@@ -389,7 +392,7 @@ class AgenticPDF {
             if (redirectUrl.protocol !== 'http:' && redirectUrl.protocol !== 'https:') {
                 throw new Error(`Redirect to unsupported protocol: ${redirectUrl.protocol}`);
             }
-            if (AgenticPDF.isPrivateHost(redirectUrl.hostname)) {
+            if (IronDocuments.isPrivateHost(redirectUrl.hostname)) {
                 throw new Error('SSRF protection: redirect to private/internal address blocked');
             }
             // Follow the validated redirect (single hop only)
@@ -654,6 +657,138 @@ class AgenticPDF {
         Telemetry.trackFeature('streamSemanticChunks');
         const chunker = new SemanticChunker(this, options);
         yield* chunker.stream();
+    }
+    /**
+     * Unified single-call ingestion optimised for AI agents.
+     * Performs metadata extraction, AI analysis (structural + semantic chunks),
+     * and returns everything in one flat, agent-friendly structure.
+     *
+     * @param options - Controls chunking strategy, size, and included data
+     * @returns IngestResult with metadata, structure, chunks, and stats
+     */
+    async ingest(options) {
+        const startTime = performance.now();
+        Telemetry.trackFeature('ingest');
+        const aiOpts = {
+            enableStructuralAnalysis: options?.includeStructure !== false,
+            enableSemanticChunking: true,
+            chunkSize: options?.maxChunkSize ?? 1000,
+            chunkOverlap: options?.overlapSize ?? 100,
+        };
+        const ai = await this.getAIFeatures(aiOpts);
+        const meta = this.getMetadata() ?? {};
+        const chunks = ai.semanticChunks.map(sc => ({
+            id: sc.id,
+            content: sc.content,
+            pages: sc.pageNumbers,
+            type: sc.type,
+            tokenCount: sc.metadata.tokenCount,
+            importance: sc.metadata.importance,
+            keywords: sc.metadata.keywords ?? [],
+        }));
+        let pageTexts;
+        if (options?.includePageText) {
+            pageTexts = [];
+            const pageRange = options.pageRange;
+            const pageCount = this.getPageCount();
+            const start = pageRange?.start ?? 1;
+            const end = Math.min(pageRange?.end ?? pageCount, pageCount);
+            for (let p = start; p <= end; p++) {
+                const textContents = await this.extractText({
+                    pageRange: { start: p, end: p },
+                    normalizeWhitespace: true,
+                });
+                const text = Array.isArray(textContents)
+                    ? textContents.map((tc) => tc.text ?? '').join(' ')
+                    : '';
+                pageTexts.push({ page: p, text });
+            }
+        }
+        const totalTokens = chunks.reduce((sum, c) => sum + c.tokenCount, 0);
+        return {
+            metadata: meta,
+            documentType: ai.structuralAnalysis?.documentType ?? 'Other',
+            summary: ai.nlpReady?.summary ?? '',
+            keywords: ai.nlpReady?.keywords ?? [],
+            structure: {
+                sections: ai.structuralAnalysis?.sections?.length ?? 0,
+                tables: ai.structuralAnalysis?.tables?.length ?? 0,
+                figures: ai.structuralAnalysis?.figures?.length ?? 0,
+            },
+            chunks,
+            ...(pageTexts ? { pageTexts } : {}),
+            stats: {
+                pageCount: this.getPageCount(),
+                fileSize: this.getFileSize(),
+                totalChunks: chunks.length,
+                totalTokens,
+                processingTimeMs: Math.round(performance.now() - startTime),
+            },
+        };
+    }
+    /**
+     * Streaming version of `ingest()` that yields NDJSON-compatible records.
+     *
+     * Emission order:
+     * 1. `{ type: 'header', metadata, documentType, summary, keywords, structure }` — one record
+     * 2. `{ type: 'chunk', ...IngestChunk }` — one per chunk
+     * 3. `{ type: 'footer', stats }` — one record
+     *
+     * @param options - Same options as ingest()
+     * @yields Objects that can be serialised with JSON.stringify per line
+     */
+    async *streamIngest(options) {
+        const startTime = performance.now();
+        Telemetry.trackFeature('streamIngest');
+        const aiOpts = {
+            enableStructuralAnalysis: options?.includeStructure !== false,
+            enableSemanticChunking: true,
+            chunkSize: options?.maxChunkSize ?? 1000,
+            chunkOverlap: options?.overlapSize ?? 100,
+        };
+        const ai = await this.getAIFeatures(aiOpts);
+        const meta = this.getMetadata() ?? {};
+        // Yield header
+        yield {
+            type: 'header',
+            metadata: meta,
+            documentType: ai.structuralAnalysis?.documentType ?? 'Other',
+            summary: ai.nlpReady?.summary ?? '',
+            keywords: ai.nlpReady?.keywords ?? [],
+            structure: {
+                sections: ai.structuralAnalysis?.sections?.length ?? 0,
+                tables: ai.structuralAnalysis?.tables?.length ?? 0,
+                figures: ai.structuralAnalysis?.figures?.length ?? 0,
+            },
+        };
+        // Yield chunks one by one
+        let totalTokens = 0;
+        let totalChunks = 0;
+        for (const sc of ai.semanticChunks) {
+            totalChunks++;
+            totalTokens += sc.metadata.tokenCount;
+            yield {
+                type: 'chunk',
+                id: sc.id,
+                content: sc.content,
+                pages: sc.pageNumbers,
+                chunkType: sc.type,
+                tokenCount: sc.metadata.tokenCount,
+                importance: sc.metadata.importance,
+                keywords: sc.metadata.keywords ?? [],
+            };
+        }
+        // Yield footer
+        yield {
+            type: 'footer',
+            stats: {
+                pageCount: this.getPageCount(),
+                fileSize: this.getFileSize(),
+                totalChunks,
+                totalTokens,
+                processingTimeMs: Math.round(performance.now() - startTime),
+            },
+        };
     }
     /**
      * Search for text within the PDF document.
@@ -977,7 +1112,7 @@ class AgenticPDF {
         }
     }
     /**
-     * Generate aPDF (Agentic PDF) metadata for the loaded document.
+     * Generate aPDF (Iron Documents) metadata for the loaded document.
      * Returns a structured APDFDocument with identifiers, AI content,
      * linked artifacts (HuggingFace models/datasets, GitHub repos),
      * structural analysis, and display hints.
@@ -1155,7 +1290,7 @@ class AgenticPDF {
         }
     }
     /**
-     * Enable global performance monitoring for all AgenticPDF operations.
+     * Enable global performance monitoring for all IronDocuments operations.
      */
     static enablePerformanceMonitoring() {
         PerformanceMonitor.enable();
@@ -1425,13 +1560,13 @@ class AgenticPDF {
         return {
             '@context': 'https://schema.org',
             '@type': 'SoftwareApplication',
-            name: 'AgenticPDF',
+            name: 'IronDocuments',
             version: '1.0.0',
             license: 'AGPL-3.0-or-later',
             description: 'Zero-dependency TypeScript PDF processing library with streaming-first architecture, semantic chunking, and built-in AI integration for agentic workflows.',
-            concepts: AgenticPDF._getConcepts(),
-            capabilities: AgenticPDF.getCapabilities(),
-            workflows: AgenticPDF.getWorkflows(),
+            concepts: IronDocuments._getConcepts(),
+            capabilities: IronDocuments.getCapabilities(),
+            workflows: IronDocuments.getWorkflows(),
             enums: {
                 DocumentType: ['Article', 'Book', 'Report', 'Form', 'Invoice', 'Resume', 'Presentation', 'Manual', 'Other'],
                 ChunkType: ['Title', 'Header', 'Paragraph', 'List', 'Table', 'Figure', 'Code', 'Quote', 'Footnote'],
@@ -1464,7 +1599,7 @@ class AgenticPDF {
                 category: 'loading',
                 streaming: true,
                 inputTypes: ['File', 'Blob', 'string (URL)', 'ArrayBuffer', 'ReadableStream<Uint8Array>'],
-                outputTypes: ['AgenticPDF'],
+                outputTypes: ['IronDocuments'],
                 methods: [
                     {
                         name: 'fromFile',
@@ -1473,9 +1608,9 @@ class AgenticPDF {
                             { name: 'file', type: 'File | Blob', required: true, description: 'The file or blob to load' },
                             { name: 'options', type: 'PDFOptions', required: false, description: 'Loading and parsing options' }
                         ],
-                        returnType: 'Promise<AgenticPDF>',
+                        returnType: 'Promise<IronDocuments>',
                         async: true, streaming: false, static: true,
-                        example: "const pdf = await AgenticPDF.fromFile(file);"
+                        example: "const pdf = await IronDocuments.fromFile(file);"
                     },
                     {
                         name: 'fromUrl',
@@ -1484,9 +1619,9 @@ class AgenticPDF {
                             { name: 'url', type: 'string', required: true, description: 'URL to fetch the PDF from' },
                             { name: 'options', type: 'PDFOptions', required: false, description: 'Loading options including streamOptions for progress tracking' }
                         ],
-                        returnType: 'Promise<AgenticPDF>',
+                        returnType: 'Promise<IronDocuments>',
                         async: true, streaming: true, static: true,
-                        example: "const pdf = await AgenticPDF.fromUrl('https://example.com/doc.pdf');"
+                        example: "const pdf = await IronDocuments.fromUrl('https://example.com/doc.pdf');"
                     },
                     {
                         name: 'fromBuffer',
@@ -1495,9 +1630,9 @@ class AgenticPDF {
                             { name: 'buffer', type: 'ArrayBuffer', required: true, description: 'Raw PDF data' },
                             { name: 'options', type: 'PDFOptions', required: false, description: 'Parsing options' }
                         ],
-                        returnType: 'Promise<AgenticPDF>',
+                        returnType: 'Promise<IronDocuments>',
                         async: true, streaming: false, static: true,
-                        example: "const pdf = await AgenticPDF.fromBuffer(buffer);"
+                        example: "const pdf = await IronDocuments.fromBuffer(buffer);"
                     },
                     {
                         name: 'fromStream',
@@ -1506,9 +1641,9 @@ class AgenticPDF {
                             { name: 'stream', type: 'ReadableStream<Uint8Array>', required: true, description: 'Readable stream of PDF data' },
                             { name: 'options', type: 'PDFOptions', required: false, description: 'Stream processing options' }
                         ],
-                        returnType: 'AgenticPDF',
+                        returnType: 'IronDocuments',
                         async: false, streaming: true, static: true,
-                        example: "const pdf = AgenticPDF.fromStream(stream);"
+                        example: "const pdf = IronDocuments.fromStream(stream);"
                     }
                 ]
             },
@@ -1752,7 +1887,7 @@ class AgenticPDF {
                     },
                     {
                         name: 'generateAPDFMetadata',
-                        description: 'Generate an aPDF (Agentic PDF) metadata envelope with identifiers, linked artifacts, AI content, structure, and display hints',
+                        description: 'Generate an aPDF (Iron Documents) metadata envelope with identifiers, linked artifacts, AI content, structure, and display hints',
                         parameters: [],
                         returnType: 'Promise<APDFDocument>',
                         async: true, streaming: false, static: false,
@@ -1845,7 +1980,7 @@ class AgenticPDF {
             {
                 id: 'apdf-format',
                 name: 'aPDF Format Operations',
-                description: 'Generate and read aPDF (Agentic PDF) metadata envelopes and binary containers. The aPDF format wraps PDF documents with rich JSON-LD metadata including linked identifiers (DOI, arXiv, ORCID), research artifacts (HuggingFace, GitHub), AI-ready semantic chunks, and display hints. The v1.1 binary container supports streaming via fixed-offset headers and optional AES-256-GCM encryption.',
+                description: 'Generate and read aPDF (Iron Documents) metadata envelopes and binary containers. The aPDF format wraps PDF documents with rich JSON-LD metadata including linked identifiers (DOI, arXiv, ORCID), research artifacts (HuggingFace, GitHub), AI-ready semantic chunks, and display hints. The v1.1 binary container supports streaming via fixed-offset headers and optional AES-256-GCM encryption.',
                 category: 'apdf',
                 streaming: true,
                 inputTypes: ['APDFBinaryOptions', 'Uint8Array', 'string (password)'],
@@ -1878,7 +2013,7 @@ class AgenticPDF {
                         ],
                         returnType: 'Promise<{ metadata: APDFDocument; pdfData: Uint8Array }>',
                         async: true, streaming: false, static: true,
-                        example: "const { metadata, pdfData } = await AgenticPDF.readAPDF(data);\nconst { metadata, pdfData } = await AgenticPDF.readAPDF(data, 'secret');"
+                        example: "const { metadata, pdfData } = await IronDocuments.readAPDF(data);\nconst { metadata, pdfData } = await IronDocuments.readAPDF(data, 'secret');"
                     },
                     {
                         name: 'readAPDFHeader',
@@ -1888,7 +2023,7 @@ class AgenticPDF {
                         ],
                         returnType: 'APDFHeader',
                         async: false, streaming: false, static: true,
-                        example: "const header = AgenticPDF.readAPDFHeader(first64bytes);"
+                        example: "const header = IronDocuments.readAPDFHeader(first64bytes);"
                     },
                     {
                         name: 'readAPDFMetadata',
@@ -1899,7 +2034,7 @@ class AgenticPDF {
                         ],
                         returnType: 'Promise<APDFDocument>',
                         async: true, streaming: false, static: true,
-                        example: "const meta = await AgenticPDF.readAPDFMetadata(data);"
+                        example: "const meta = await IronDocuments.readAPDFMetadata(data);"
                     }
                 ]
             },
@@ -1918,7 +2053,7 @@ class AgenticPDF {
                         parameters: [],
                         returnType: 'LibraryOntology',
                         async: false, streaming: false, static: true,
-                        example: "const ontology = AgenticPDF.describe();"
+                        example: "const ontology = IronDocuments.describe();"
                     },
                     {
                         name: 'getCapabilities',
@@ -1926,7 +2061,7 @@ class AgenticPDF {
                         parameters: [],
                         returnType: 'Capability[]',
                         async: false, streaming: false, static: true,
-                        example: "const capabilities = AgenticPDF.getCapabilities();"
+                        example: "const capabilities = IronDocuments.getCapabilities();"
                     },
                     {
                         name: 'getMethodSignatures',
@@ -1934,7 +2069,7 @@ class AgenticPDF {
                         parameters: [],
                         returnType: 'MethodDescriptor[]',
                         async: false, streaming: false, static: true,
-                        example: "const methods = AgenticPDF.getMethodSignatures();"
+                        example: "const methods = IronDocuments.getMethodSignatures();"
                     },
                     {
                         name: 'getWorkflows',
@@ -1942,7 +2077,7 @@ class AgenticPDF {
                         parameters: [],
                         returnType: 'Workflow[]',
                         async: false, streaming: false, static: true,
-                        example: "const workflows = AgenticPDF.getWorkflows();"
+                        example: "const workflows = IronDocuments.getWorkflows();"
                     },
                     {
                         name: 'getToolSchemas',
@@ -1952,7 +2087,7 @@ class AgenticPDF {
                         ],
                         returnType: 'ToolSchema[]',
                         async: false, streaming: false, static: true,
-                        example: "const tools = AgenticPDF.getToolSchemas('openai');"
+                        example: "const tools = IronDocuments.getToolSchemas('openai');"
                     },
                     {
                         name: 'getMCPManifest',
@@ -1960,7 +2095,7 @@ class AgenticPDF {
                         parameters: [],
                         returnType: 'MCPManifest',
                         async: false, streaming: false, static: true,
-                        example: "const manifest = AgenticPDF.getMCPManifest();"
+                        example: "const manifest = IronDocuments.getMCPManifest();"
                     },
                     {
                         name: 'getJSONSchemas',
@@ -1968,7 +2103,7 @@ class AgenticPDF {
                         parameters: [],
                         returnType: 'Record<string, any>',
                         async: false, streaming: false, static: true,
-                        example: "const schemas = AgenticPDF.getJSONSchemas();"
+                        example: "const schemas = IronDocuments.getJSONSchemas();"
                     },
                     {
                         name: 'describeForAgent',
@@ -1978,7 +2113,7 @@ class AgenticPDF {
                         ],
                         returnType: '{ ontology: LibraryOntology; tools: any[]; schemas: Record<string, any>; workflows: Workflow[]; agentGuidance: object }',
                         async: false, streaming: false, static: true,
-                        example: "const info = AgenticPDF.describeForAgent('openai');"
+                        example: "const info = IronDocuments.describeForAgent('openai');"
                     },
                     {
                         name: 'describeDocument',
@@ -2007,7 +2142,7 @@ class AgenticPDF {
                         ],
                         returnType: 'void',
                         async: false, streaming: false, static: true,
-                        example: "AgenticPDF.registerSkill({ id: 'my-skill', name: 'My Skill', description: 'Custom tools', version: '1.0', tools: [myTool] });"
+                        example: "IronDocuments.registerSkill({ id: 'my-skill', name: 'My Skill', description: 'Custom tools', version: '1.0', tools: [myTool] });"
                     },
                     {
                         name: 'unregisterSkill',
@@ -2017,7 +2152,7 @@ class AgenticPDF {
                         ],
                         returnType: 'boolean',
                         async: false, streaming: false, static: true,
-                        example: "const removed = AgenticPDF.unregisterSkill('my-skill');"
+                        example: "const removed = IronDocuments.unregisterSkill('my-skill');"
                     },
                     {
                         name: 'getSkill',
@@ -2027,7 +2162,7 @@ class AgenticPDF {
                         ],
                         returnType: 'AgentSkill | undefined',
                         async: false, streaming: false, static: true,
-                        example: "const skill = AgenticPDF.getSkill('pdf-extraction');"
+                        example: "const skill = IronDocuments.getSkill('pdf-extraction');"
                     },
                     {
                         name: 'listSkills',
@@ -2035,7 +2170,7 @@ class AgenticPDF {
                         parameters: [],
                         returnType: 'AgentSkill[]',
                         async: false, streaming: false, static: true,
-                        example: "const skills = AgenticPDF.listSkills();"
+                        example: "const skills = IronDocuments.listSkills();"
                     },
                     {
                         name: 'listTools',
@@ -2045,7 +2180,7 @@ class AgenticPDF {
                         ],
                         returnType: 'AgentTool[]',
                         async: false, streaming: false, static: true,
-                        example: "const tools = AgenticPDF.listTools('extraction');"
+                        example: "const tools = IronDocuments.listTools('extraction');"
                     },
                     {
                         name: 'createAgentContext',
@@ -2086,7 +2221,7 @@ class AgenticPDF {
      * Useful for AI agents performing automated code generation.
      */
     static getMethodSignatures() {
-        return AgenticPDF.getCapabilities().flatMap(c => c.methods);
+        return IronDocuments.getCapabilities().flatMap(c => c.methods);
     }
     /**
      * Returns pre-built workflow templates for common multi-step operations.
@@ -2099,7 +2234,7 @@ class AgenticPDF {
                 name: 'Basic Text Extraction',
                 description: 'Load a PDF and extract all text content with formatting preserved.',
                 steps: [
-                    { order: 1, method: 'fromFile', description: 'Load the PDF document', example: "const pdf = await AgenticPDF.fromFile(file);" },
+                    { order: 1, method: 'fromFile', description: 'Load the PDF document', example: "const pdf = await IronDocuments.fromFile(file);" },
                     { order: 2, method: 'extractText', description: 'Extract text with formatting', example: "const text = await pdf.extractText({ preserveFormatting: true });" },
                     { order: 3, method: 'close', description: 'Release resources', example: "pdf.close();" }
                 ]
@@ -2109,7 +2244,7 @@ class AgenticPDF {
                 name: 'RAG Pipeline Integration',
                 description: 'Process a PDF into semantic chunks suitable for vector store ingestion in a Retrieval-Augmented Generation system.',
                 steps: [
-                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await AgenticPDF.fromFile(file, { lazyLoad: true });" },
+                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await IronDocuments.fromFile(file, { lazyLoad: true });" },
                     { order: 2, method: 'streamSemanticChunks', description: 'Stream semantic chunks to vector store', example: "for await (const chunk of pdf.streamSemanticChunks({ strategy: 'semantic', maxChunkSize: 1000 })) { await vectorStore.add(chunk); }" },
                     { order: 3, method: 'close', description: 'Release resources', example: "pdf.close();" }
                 ]
@@ -2119,7 +2254,7 @@ class AgenticPDF {
                 name: 'Full Document Analysis',
                 description: 'Perform comprehensive AI analysis including structural analysis, NER, and summarization.',
                 steps: [
-                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await AgenticPDF.fromFile(file);" },
+                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await IronDocuments.fromFile(file);" },
                     { order: 2, method: 'getAIFeatures', description: 'Run AI analysis', example: "const ai = await pdf.getAIFeatures({ enableStructuralAnalysis: true, enableNER: true, enableSummarization: true });" },
                     { order: 3, method: 'exportAs', description: 'Export structured results', example: "const json = await pdf.exportAs('json', { includeMetadata: true });" },
                     { order: 4, method: 'close', description: 'Release resources', example: "pdf.close();" }
@@ -2130,7 +2265,7 @@ class AgenticPDF {
                 name: 'Form Extraction and Filling',
                 description: 'Extract form fields, fill them with data, and save the modified PDF.',
                 steps: [
-                    { order: 1, method: 'fromFile', description: 'Load the PDF form', example: "const pdf = await AgenticPDF.fromFile(formFile);" },
+                    { order: 1, method: 'fromFile', description: 'Load the PDF form', example: "const pdf = await IronDocuments.fromFile(formFile);" },
                     { order: 2, method: 'getFormFields', description: 'Inspect available form fields', example: "const fields = await pdf.getFormFields();" },
                     { order: 3, method: 'fillForm', description: 'Fill form with data', example: "await pdf.fillForm({ name: 'John Doe', date: '2024-01-01' });" },
                     { order: 4, method: 'save', description: 'Save the filled form', example: "const blob = await pdf.save();" },
@@ -2142,7 +2277,7 @@ class AgenticPDF {
                 name: 'Memory-Efficient Large Document Processing',
                 description: 'Process very large PDFs (100MB+) using streaming APIs with progress tracking and memory limits.',
                 steps: [
-                    { order: 1, method: 'fromUrl', description: 'Stream PDF from URL with progress', example: "const pdf = await AgenticPDF.fromUrl(url, { streamOptions: { chunkSize: 1024 * 1024, progressCallback: p => console.log(p.currentOperation) } });" },
+                    { order: 1, method: 'fromUrl', description: 'Stream PDF from URL with progress', example: "const pdf = await IronDocuments.fromUrl(url, { streamOptions: { chunkSize: 1024 * 1024, progressCallback: p => console.log(p.currentOperation) } });" },
                     { order: 2, method: 'streamText', description: 'Stream text extraction page by page', example: "for await (const text of pdf.streamText({ normalizeWhitespace: true })) { process(text); }" },
                     { order: 3, method: 'unloadPages', description: 'Free processed pages from memory', example: "pdf.unloadPages();" },
                     { order: 4, method: 'close', description: 'Release resources', example: "pdf.close();" }
@@ -2153,7 +2288,7 @@ class AgenticPDF {
                 name: 'Multi-Format Export Pipeline',
                 description: 'Export a PDF to multiple output formats for different downstream consumers.',
                 steps: [
-                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await AgenticPDF.fromFile(file);" },
+                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await IronDocuments.fromFile(file);" },
                     { order: 2, method: 'exportAs', description: 'Export as Markdown', example: "const md = await pdf.exportAs('markdown', { includeImages: true });" },
                     { order: 3, method: 'exportAs', description: 'Export as structured JSON', example: "const json = await pdf.exportAs('json', { includeMetadata: true, includeAnnotations: true });" },
                     { order: 4, method: 'exportAs', description: 'Export as HTML', example: "const html = await pdf.exportAs('html');" },
@@ -2165,7 +2300,7 @@ class AgenticPDF {
                 name: 'Stream to LLM',
                 description: 'Stream PDF content directly to a Large Language Model in appropriately sized chunks.',
                 steps: [
-                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await AgenticPDF.fromFile(file, { lazyLoad: true });" },
+                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await IronDocuments.fromFile(file, { lazyLoad: true });" },
                     { order: 2, method: 'streamSemanticChunks', description: 'Stream chunks sized for LLM context windows', example: "for await (const chunk of pdf.streamSemanticChunks({ maxChunkSize: 1500, preserveParagraphs: true })) { await llm.send(chunk.content); }" },
                     { order: 3, method: 'close', description: 'Release resources', example: "pdf.close();" }
                 ]
@@ -2175,7 +2310,7 @@ class AgenticPDF {
                 name: 'aPDF Metadata Generation',
                 description: 'Generate a rich, machine-readable aPDF envelope from a PDF with identifiers (DOI, arXiv), linked artifacts (HuggingFace models/datasets, GitHub repos), AI-ready chunks, and display hints.',
                 steps: [
-                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await AgenticPDF.fromFile(file, { lazyLoad: true });" },
+                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await IronDocuments.fromFile(file, { lazyLoad: true });" },
                     { order: 2, method: 'generateAPDFMetadata', description: 'Generate the aPDF metadata envelope', example: "const apdf = await pdf.generateAPDFMetadata();" },
                     { order: 3, method: 'exportAs', description: 'Or export directly as aPDF JSON', example: "const json = await pdf.exportAs('apdf');" },
                     { order: 4, method: 'close', description: 'Release resources', example: "pdf.close();" }
@@ -2186,7 +2321,7 @@ class AgenticPDF {
                 name: 'aPDF Binary Container Generation',
                 description: 'Generate a streaming-optimized aPDF v1.1 binary container that bundles the metadata envelope with the original PDF data. Optionally encrypt one or both sections with AES-256-GCM.',
                 steps: [
-                    { order: 1, method: 'fromFile', description: 'Load the source PDF', example: "const pdf = await AgenticPDF.fromFile(file);" },
+                    { order: 1, method: 'fromFile', description: 'Load the source PDF', example: "const pdf = await IronDocuments.fromFile(file);" },
                     { order: 2, method: 'generateAPDFBinary', description: 'Generate unencrypted binary container', example: "const binary = await pdf.generateAPDFBinary();" },
                     { order: 3, method: 'close', description: 'Release resources', example: "pdf.close();" }
                 ]
@@ -2196,7 +2331,7 @@ class AgenticPDF {
                 name: 'Encrypted aPDF Binary Generation',
                 description: 'Generate an encrypted aPDF binary container. By default, only the PDF data is encrypted while metadata remains readable for indexing. Optionally encrypt both sections.',
                 steps: [
-                    { order: 1, method: 'fromFile', description: 'Load the source PDF', example: "const pdf = await AgenticPDF.fromFile(file);" },
+                    { order: 1, method: 'fromFile', description: 'Load the source PDF', example: "const pdf = await IronDocuments.fromFile(file);" },
                     { order: 2, method: 'generateAPDFBinary', description: 'Generate encrypted binary (PDF-only encryption)', example: "const binary = await pdf.generateAPDFBinary({ encryption: { password: 'secret' } });" },
                     { order: 3, method: 'generateAPDFBinary', description: 'Or encrypt both metadata and PDF', example: "const binary = await pdf.generateAPDFBinary({ encryption: { password: 'secret', encryptMetadata: true } });" },
                     { order: 4, method: 'close', description: 'Release resources', example: "pdf.close();" }
@@ -2207,11 +2342,11 @@ class AgenticPDF {
                 name: 'aPDF Binary Round-Trip',
                 description: 'Generate an aPDF binary container, then read it back to verify integrity. Demonstrates the full encode/decode lifecycle including optional encryption/decryption.',
                 steps: [
-                    { order: 1, method: 'fromFile', description: 'Load the source PDF', example: "const pdf = await AgenticPDF.fromFile(file);" },
+                    { order: 1, method: 'fromFile', description: 'Load the source PDF', example: "const pdf = await IronDocuments.fromFile(file);" },
                     { order: 2, method: 'generateAPDFBinary', description: 'Generate binary container', example: "const binary = await pdf.generateAPDFBinary();" },
-                    { order: 3, method: 'readAPDF', description: 'Read and decode the container', example: "const { metadata, pdfData } = await AgenticPDF.readAPDF(binary);" },
-                    { order: 4, method: 'readAPDFHeader', description: 'Or read just the header for streaming', example: "const header = AgenticPDF.readAPDFHeader(binary);" },
-                    { order: 5, method: 'readAPDFMetadata', description: 'Or read just the metadata for indexing', example: "const meta = await AgenticPDF.readAPDFMetadata(binary);" },
+                    { order: 3, method: 'readAPDF', description: 'Read and decode the container', example: "const { metadata, pdfData } = await IronDocuments.readAPDF(binary);" },
+                    { order: 4, method: 'readAPDFHeader', description: 'Or read just the header for streaming', example: "const header = IronDocuments.readAPDFHeader(binary);" },
+                    { order: 5, method: 'readAPDFMetadata', description: 'Or read just the metadata for indexing', example: "const meta = await IronDocuments.readAPDFMetadata(binary);" },
                     { order: 6, method: 'close', description: 'Release resources', example: "pdf.close();" }
                 ]
             },
@@ -2220,19 +2355,39 @@ class AgenticPDF {
                 name: 'aPDF Streaming Index & Catalog',
                 description: 'Use the aPDF v1.1 streaming features to index and catalog a collection of aPDF files using only HTTP Range requests — read headers and metadata without downloading full files.',
                 steps: [
-                    { order: 1, method: 'readAPDFHeader', description: 'Read the 64-byte header to get section offsets', example: "const header = AgenticPDF.readAPDFHeader(first64Bytes);" },
-                    { order: 2, method: 'readAPDFMetadata', description: 'Fetch and read only the metadata section', example: "const meta = await AgenticPDF.readAPDFMetadata(headerPlusMeta);" },
-                    { order: 3, method: 'readAPDF', description: 'If full content needed, read the entire container', example: "const { metadata, pdfData } = await AgenticPDF.readAPDF(fullData);" }
+                    { order: 1, method: 'readAPDFHeader', description: 'Read the 64-byte header to get section offsets', example: "const header = IronDocuments.readAPDFHeader(first64Bytes);" },
+                    { order: 2, method: 'readAPDFMetadata', description: 'Fetch and read only the metadata section', example: "const meta = await IronDocuments.readAPDFMetadata(headerPlusMeta);" },
+                    { order: 3, method: 'readAPDF', description: 'If full content needed, read the entire container', example: "const { metadata, pdfData } = await IronDocuments.readAPDF(fullData);" }
+                ]
+            },
+            {
+                id: 'agentic-ingest',
+                name: 'Unified Agentic Ingestion',
+                description: 'Single-call PDF ingestion for AI agents. Returns metadata, structure, semantic chunks, and stats in one pass.',
+                steps: [
+                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await IronDocuments.fromFile(file, { lazyLoad: true });" },
+                    { order: 2, method: 'ingest', description: 'Single-call ingestion', example: "const result = await pdf.ingest({ strategy: 'semantic', maxChunkSize: 1000 });" },
+                    { order: 3, method: 'close', description: 'Release resources', example: "pdf.close();" }
+                ]
+            },
+            {
+                id: 'agentic-ingest-streaming',
+                name: 'Streaming Agentic Ingestion (NDJSON)',
+                description: 'Stream PDF ingestion results as NDJSON records for memory-efficient pipeline consumption.',
+                steps: [
+                    { order: 1, method: 'fromFile', description: 'Load the PDF', example: "const pdf = await IronDocuments.fromFile(file, { lazyLoad: true });" },
+                    { order: 2, method: 'streamIngest', description: 'Stream NDJSON records', example: "for await (const record of pdf.streamIngest()) { process.stdout.write(JSON.stringify(record) + '\\n'); }" },
+                    { order: 3, method: 'close', description: 'Release resources', example: "pdf.close();" }
                 ]
             },
             {
                 id: 'agent-discovery',
                 name: 'AI Agent Discovery & Integration',
-                description: 'Discover all library capabilities, generate tool schemas for function calling, and get workflow recommendations. Use this as the first step when integrating AgenticPDF with an AI agent or LLM system.',
+                description: 'Discover all library capabilities, generate tool schemas for function calling, and get workflow recommendations. Use this as the first step when integrating IronDocuments with an AI agent or LLM system.',
                 steps: [
-                    { order: 1, method: 'describeForAgent', description: 'Get complete introspection payload (ontology + tools + schemas + guidance)', example: "const info = AgenticPDF.describeForAgent('openai');" },
-                    { order: 2, method: 'getToolSchemas', description: 'Or get just the tool schemas for function calling', example: "const tools = AgenticPDF.getToolSchemas('openai');" },
-                    { order: 3, method: 'getMCPManifest', description: 'Or get the MCP server manifest for MCP-compatible agents', example: "const manifest = AgenticPDF.getMCPManifest();" },
+                    { order: 1, method: 'describeForAgent', description: 'Get complete introspection payload (ontology + tools + schemas + guidance)', example: "const info = IronDocuments.describeForAgent('openai');" },
+                    { order: 2, method: 'getToolSchemas', description: 'Or get just the tool schemas for function calling', example: "const tools = IronDocuments.getToolSchemas('openai');" },
+                    { order: 3, method: 'getMCPManifest', description: 'Or get the MCP server manifest for MCP-compatible agents', example: "const manifest = IronDocuments.getMCPManifest();" },
                     { order: 4, method: 'describeDocument', description: 'After loading a document, get document-specific recommendations', example: "const report = pdf.describeDocument();" }
                 ]
             },
@@ -2241,7 +2396,7 @@ class AgenticPDF {
                 name: 'Agent Tool Execution Pipeline',
                 description: 'Create a secure agent context, discover available tools, execute tool calls with middleware and security policies, and track execution history. This is the primary workflow for AI agents performing document operations via function calling.',
                 steps: [
-                    { order: 1, method: 'fromFile', description: 'Load the PDF document', example: "const pdf = await AgenticPDF.fromFile(file);" },
+                    { order: 1, method: 'fromFile', description: 'Load the PDF document', example: "const pdf = await IronDocuments.fromFile(file);" },
                     { order: 2, method: 'createAgentContext', description: 'Create a secure agent context with security policy and middleware', example: "const ctx = pdf.createAgentContext({ securityPolicy: { allowMutations: false, maxCallsPerSession: 50 } });" },
                     { order: 3, method: 'getToolSchemas', description: 'Get tool schemas for LLM function-calling integration', example: "const schemas = ctx.getToolSchemas('openai');" },
                     { order: 4, method: 'executeTool', description: 'Execute tool calls dispatched by the LLM', example: "const result = await ctx.executeTool({ name: 'extractText', arguments: { preserveFormatting: true } });" },
@@ -2614,7 +2769,7 @@ class AgenticPDF {
                 description: 'A stateful session between an AI agent and a loaded PDF. Provides tool dispatch, middleware hooks, security policies, execution history, and skill activation.',
                 properties: [
                     { name: 'session', type: 'AgentSession', description: 'Session tracking state' },
-                    { name: 'document', type: 'AgenticPDF', description: 'Bound PDF document' },
+                    { name: 'document', type: 'IronDocuments', description: 'Bound PDF document' },
                     { name: 'securityPolicy', type: 'AgentSecurityPolicy', description: 'Tool allow/block lists and limits' },
                     { name: 'middleware', type: 'AgentMiddleware[]', description: 'Before/after/error interceptors' },
                     { name: 'history', type: 'AgentToolResult[]', description: 'Execution history' },
@@ -2831,6 +2986,360 @@ class AgenticPDF {
         return walkOutline(firstEntry);
     }
     /**
+     * Get embedded files from the document's Names/EmbeddedFiles tree.
+     * Also includes file attachments found in annotations.
+     * @returns Array of EmbeddedFile objects with name, MIME type, size, and data
+     */
+    getEmbeddedFiles() {
+        const files = [];
+        if (!this.parser || !this.xrefTable || !this.catalog)
+            return files;
+        const parser = this.parser;
+        const xref = this.xrefTable;
+        const resolve = (obj) => {
+            if (obj && obj.type === PDFObjectType.Reference) {
+                const ref = obj.value;
+                return parser.parseIndirectObject(ref.objectNumber, ref.generationNumber, xref);
+            }
+            return obj;
+        };
+        const getString = (dict, key) => {
+            const obj = dict.entries.get(key);
+            return obj && obj.type === PDFObjectType.String ? obj.value : undefined;
+        };
+        const getNumber = (dict, key) => {
+            const obj = dict.entries.get(key);
+            return obj && obj.type === PDFObjectType.Number ? obj.value : undefined;
+        };
+        // Walk the /Names -> /EmbeddedFiles name tree
+        const namesRef = this.catalog.entries.get('Names');
+        if (!namesRef)
+            return files;
+        const namesObj = resolve(namesRef);
+        if (namesObj.type !== PDFObjectType.Dictionary)
+            return files;
+        const namesDict = namesObj.value;
+        const efRef = namesDict.entries.get('EmbeddedFiles');
+        if (!efRef)
+            return files;
+        const efObj = resolve(efRef);
+        if (efObj.type !== PDFObjectType.Dictionary)
+            return files;
+        // Name tree: walk /Names array (leaf node) or /Kids array (intermediate node)
+        const visited = new Set();
+        const walkNameTree = (node) => {
+            // Leaf node: /Names is [name1, filespec1, name2, filespec2, ...]
+            const namesArr = node.entries.get('Names');
+            if (namesArr) {
+                const resolved = resolve(namesArr);
+                if (resolved.type === PDFObjectType.Array) {
+                    const arr = resolved.value;
+                    for (let i = 0; i + 1 < arr.length; i += 2) {
+                        const nameObj = resolve(arr[i]);
+                        const fsObj = resolve(arr[i + 1]);
+                        const name = nameObj.type === PDFObjectType.String ? nameObj.value : `file_${i / 2}`;
+                        if (visited.has(name))
+                            continue;
+                        visited.add(name);
+                        if (fsObj.type === PDFObjectType.Dictionary) {
+                            const fsDict = fsObj.value;
+                            const file = {
+                                name: getString(fsDict, 'UF') || getString(fsDict, 'F') || name,
+                                description: getString(fsDict, 'Desc'),
+                            };
+                            // Get relationship (PDF 2.0)
+                            const afRel = fsDict.entries.get('AFRelationship');
+                            if (afRel?.type === PDFObjectType.Name) {
+                                file.relationship = afRel.value;
+                            }
+                            // Extract from /EF dictionary
+                            const efStreamRef = fsDict.entries.get('EF');
+                            if (efStreamRef) {
+                                const efStreamObj = resolve(efStreamRef);
+                                if (efStreamObj.type === PDFObjectType.Dictionary) {
+                                    const efStreamDict = efStreamObj.value;
+                                    const fRef = efStreamDict.entries.get('F') || efStreamDict.entries.get('UF');
+                                    if (fRef) {
+                                        const streamObj = resolve(fRef);
+                                        if (streamObj.type === PDFObjectType.Dictionary) {
+                                            const sd = streamObj.value;
+                                            const subtypeObj = sd.entries.get('Subtype');
+                                            if (subtypeObj?.type === PDFObjectType.Name) {
+                                                file.mimeType = subtypeObj.value.replace('#2F', '/');
+                                            }
+                                            const paramsRef = sd.entries.get('Params');
+                                            if (paramsRef) {
+                                                const paramsObj = resolve(paramsRef);
+                                                if (paramsObj.type === PDFObjectType.Dictionary) {
+                                                    const pd = paramsObj.value;
+                                                    file.size = getNumber(pd, 'Size');
+                                                    const cd = getString(pd, 'CreationDate');
+                                                    if (cd)
+                                                        file.creationDate = parser.parsePDFDate(cd);
+                                                    const md = getString(pd, 'ModDate');
+                                                    if (md)
+                                                        file.modificationDate = parser.parsePDFDate(md);
+                                                }
+                                            }
+                                        }
+                                        if (streamObj.type === PDFObjectType.Stream) {
+                                            file.data = streamObj.value;
+                                        }
+                                    }
+                                }
+                            }
+                            files.push(file);
+                        }
+                    }
+                }
+            }
+            // Intermediate node: /Kids is an array of sub-tree nodes
+            const kidsRef = node.entries.get('Kids');
+            if (kidsRef) {
+                const kidsObj = resolve(kidsRef);
+                if (kidsObj.type === PDFObjectType.Array) {
+                    for (const kidRef of kidsObj.value) {
+                        const kidObj = resolve(kidRef);
+                        if (kidObj.type === PDFObjectType.Dictionary) {
+                            walkNameTree(kidObj.value);
+                        }
+                    }
+                }
+            }
+        };
+        walkNameTree(efObj.value);
+        return files;
+    }
+    /**
+     * Get page labels defined in the document.
+     * Page labels allow custom numbering (e.g., roman numerals for preface, arabic for body).
+     * @returns Array of PageLabel entries describing numbering ranges
+     */
+    getPageLabels() {
+        const labels = [];
+        if (!this.parser || !this.xrefTable || !this.catalog)
+            return labels;
+        const parser = this.parser;
+        const xref = this.xrefTable;
+        const resolve = (obj) => {
+            if (obj && obj.type === PDFObjectType.Reference) {
+                const ref = obj.value;
+                return parser.parseIndirectObject(ref.objectNumber, ref.generationNumber, xref);
+            }
+            return obj;
+        };
+        const plRef = this.catalog.entries.get('PageLabels');
+        if (!plRef)
+            return labels;
+        const plObj = resolve(plRef);
+        if (plObj.type !== PDFObjectType.Dictionary)
+            return labels;
+        const plDict = plObj.value;
+        // Number tree: /Nums is [key1, val1, key2, val2, ...]
+        // where key is a 0-based page index and val is a label dictionary
+        const walkNumberTree = (node) => {
+            const numsRef = node.entries.get('Nums');
+            if (numsRef) {
+                const numsObj = resolve(numsRef);
+                if (numsObj.type === PDFObjectType.Array) {
+                    const arr = numsObj.value;
+                    for (let i = 0; i + 1 < arr.length; i += 2) {
+                        const keyObj = resolve(arr[i]);
+                        const valObj = resolve(arr[i + 1]);
+                        if (keyObj.type !== PDFObjectType.Number)
+                            continue;
+                        const startPage = keyObj.value + 1; // Convert 0-based to 1-based
+                        const label = { startPage };
+                        if (valObj.type === PDFObjectType.Dictionary) {
+                            const valDict = valObj.value;
+                            const sObj = valDict.entries.get('S');
+                            if (sObj?.type === PDFObjectType.Name) {
+                                label.style = sObj.value;
+                            }
+                            const pObj = valDict.entries.get('P');
+                            if (pObj?.type === PDFObjectType.String) {
+                                label.prefix = pObj.value;
+                            }
+                            const stObj = valDict.entries.get('St');
+                            if (stObj?.type === PDFObjectType.Number) {
+                                label.startNumber = stObj.value;
+                            }
+                        }
+                        labels.push(label);
+                    }
+                }
+            }
+            // Intermediate node
+            const kidsRef = node.entries.get('Kids');
+            if (kidsRef) {
+                const kidsObj = resolve(kidsRef);
+                if (kidsObj.type === PDFObjectType.Array) {
+                    for (const kidRef of kidsObj.value) {
+                        const kidObj = resolve(kidRef);
+                        if (kidObj.type === PDFObjectType.Dictionary) {
+                            walkNumberTree(kidObj.value);
+                        }
+                    }
+                }
+            }
+        };
+        walkNumberTree(plDict);
+        // Sort by start page in case the tree isn't ordered
+        labels.sort((a, b) => a.startPage - b.startPage);
+        return labels;
+    }
+    /**
+     * Get the structure tree (tagged PDF) for accessibility and semantic understanding.
+     * Returns the root nodes of the document's logical structure.
+     * @returns Array of StructureTreeNode objects representing the document structure
+     */
+    getStructureTree() {
+        if (!this.parser || !this.xrefTable || !this.catalog)
+            return [];
+        const parser = this.parser;
+        const xref = this.xrefTable;
+        const resolve = (obj) => {
+            if (obj && obj.type === PDFObjectType.Reference) {
+                const ref = obj.value;
+                return parser.parseIndirectObject(ref.objectNumber, ref.generationNumber, xref);
+            }
+            return obj;
+        };
+        const stRef = this.catalog.entries.get('StructTreeRoot');
+        if (!stRef)
+            return [];
+        const stObj = resolve(stRef);
+        if (stObj.type !== PDFObjectType.Dictionary)
+            return [];
+        const stDict = stObj.value;
+        // Build page object number -> page index map for page references
+        const objNumToPage = new Map();
+        const collectPages = (node, ref) => {
+            const dict = resolve(node);
+            if (dict.type !== PDFObjectType.Dictionary)
+                return;
+            const d = dict.value;
+            const typeEntry = d.entries.get('Type');
+            const typeName = typeEntry?.type === PDFObjectType.Name ? typeEntry.value : '';
+            if (typeName === 'Page') {
+                if (ref && ref.type === PDFObjectType.Reference) {
+                    objNumToPage.set(ref.value.objectNumber, objNumToPage.size + 1);
+                }
+                return;
+            }
+            const kids = d.entries.get('Kids');
+            if (!kids)
+                return;
+            const kidsArr = resolve(kids);
+            if (kidsArr.type !== PDFObjectType.Array)
+                return;
+            for (const kid of kidsArr.value) {
+                collectPages(kid, kid);
+            }
+        };
+        const pagesRef = this.catalog.entries.get('Pages');
+        if (pagesRef)
+            collectPages(pagesRef);
+        // Walk structure elements recursively
+        const visited = new Set();
+        const maxDepth = 64;
+        const walkStructElement = (elemObj, depth) => {
+            if (depth > maxDepth)
+                return null;
+            const elem = resolve(elemObj);
+            if (elem.type !== PDFObjectType.Dictionary)
+                return null;
+            const dict = elem.value;
+            // Prevent cycles
+            if (elemObj.type === PDFObjectType.Reference) {
+                const objNum = elemObj.value.objectNumber;
+                if (visited.has(objNum))
+                    return null;
+                visited.add(objNum);
+            }
+            const typeObj = dict.entries.get('S');
+            const type = typeObj?.type === PDFObjectType.Name ? typeObj.value : 'Unknown';
+            const node = {
+                type,
+                children: [],
+            };
+            // Optional attributes
+            const titleObj = dict.entries.get('T');
+            if (titleObj) {
+                const tr = resolve(titleObj);
+                if (tr.type === PDFObjectType.String)
+                    node.title = tr.value;
+            }
+            const langObj = dict.entries.get('Lang');
+            if (langObj) {
+                const lr = resolve(langObj);
+                if (lr.type === PDFObjectType.String)
+                    node.lang = lr.value;
+            }
+            const altObj = dict.entries.get('Alt');
+            if (altObj) {
+                const ar = resolve(altObj);
+                if (ar.type === PDFObjectType.String)
+                    node.alt = ar.value;
+            }
+            const actTextObj = dict.entries.get('ActualText');
+            if (actTextObj) {
+                const atr = resolve(actTextObj);
+                if (atr.type === PDFObjectType.String)
+                    node.actualText = atr.value;
+            }
+            // Role mapping
+            // Page reference
+            const pgObj = dict.entries.get('Pg');
+            if (pgObj?.type === PDFObjectType.Reference) {
+                node.pageNumber = objNumToPage.get(pgObj.value.objectNumber);
+            }
+            // Children: /K can be a single element, array, or MCID integer
+            const kObj = dict.entries.get('K');
+            if (kObj) {
+                const kr = resolve(kObj);
+                if (kr.type === PDFObjectType.Array) {
+                    for (const childRef of kr.value) {
+                        const child = walkStructElement(childRef, depth + 1);
+                        if (child)
+                            node.children.push(child);
+                    }
+                }
+                else if (kr.type === PDFObjectType.Dictionary) {
+                    const child = walkStructElement(kr, depth + 1);
+                    if (child)
+                        node.children.push(child);
+                }
+                else if (kr.type === PDFObjectType.Reference) {
+                    const child = walkStructElement(kr, depth + 1);
+                    if (child)
+                        node.children.push(child);
+                }
+                // If kr is a Number, it's a MCID — leaf content reference, no children to add
+            }
+            return node;
+        };
+        // The root's /K entry contains the top-level structure elements
+        const rootK = stDict.entries.get('K');
+        if (!rootK)
+            return [];
+        const rootKResolved = resolve(rootK);
+        const nodes = [];
+        if (rootKResolved.type === PDFObjectType.Array) {
+            for (const childRef of rootKResolved.value) {
+                const child = walkStructElement(childRef, 0);
+                if (child)
+                    nodes.push(child);
+            }
+        }
+        else {
+            const child = walkStructElement(rootKResolved, 0);
+            if (child)
+                nodes.push(child);
+        }
+        return nodes;
+    }
+    /**
        * Describes the currently loaded document's available operations and
        * recommends workflows based on document characteristics.
        * Returns undefined if no document is loaded.
@@ -2844,12 +3353,14 @@ class AgenticPDF {
         const operations = [
             'extractText', 'streamText', 'extractImages',
             'getAIFeatures', 'generateSemanticChunks', 'streamSemanticChunks',
+            'ingest', 'streamIngest',
             'search', 'getAnnotations', 'addAnnotation',
             'getFormFields', 'fillForm',
             'renderPage', 'renderPageToImage', 'buildTextLayer',
             'exportAs', 'save',
             'generateAPDFMetadata', 'generateAPDFBinary',
             'getMetadata', 'getPage', 'getAllPages', 'getNamedDestinations',
+            'getEmbeddedFiles', 'getPageLabels', 'getStructureTree', 'getOutline',
             'close', 'unloadPages', 'getMemoryStats',
             'describeDocument'
         ];
@@ -2885,7 +3396,7 @@ class AgenticPDF {
      * Supports OpenAI function calling, Anthropic tool use, and generic formats.
      */
     static getToolSchemas(format = 'openai') {
-        const tools = AgenticPDF._buildToolDefinitions();
+        const tools = IronDocuments._buildToolDefinitions();
         switch (format) {
             case 'openai':
                 return tools.map(tool => ({
@@ -2896,7 +3407,7 @@ class AgenticPDF {
                         parameters: {
                             type: 'object',
                             properties: Object.fromEntries(tool.parameters.map(p => [p.name, {
-                                    type: AgenticPDF._tsTypeToJsonType(p.type),
+                                    type: IronDocuments._tsTypeToJsonType(p.type),
                                     description: p.description,
                                     ...(p.enum ? { enum: p.enum } : {}),
                                     ...(p.default !== undefined ? { default: p.default } : {}),
@@ -2914,7 +3425,7 @@ class AgenticPDF {
                     input_schema: {
                         type: 'object',
                         properties: Object.fromEntries(tool.parameters.map(p => [p.name, {
-                                type: AgenticPDF._tsTypeToJsonType(p.type),
+                                type: IronDocuments._tsTypeToJsonType(p.type),
                                 description: p.description,
                                 ...(p.enum ? { enum: p.enum } : {}),
                                 ...(p.default !== undefined ? { default: p.default } : {})
@@ -2932,9 +3443,9 @@ class AgenticPDF {
      * all available tools and resources for agent discovery.
      */
     static getMCPManifest() {
-        const tools = AgenticPDF._buildToolDefinitions();
+        const tools = IronDocuments._buildToolDefinitions();
         return {
-            name: 'agenticpdf',
+            name: 'irondocuments',
             version: '1.0.0',
             description: 'PDF processing server with text extraction, AI analysis, image extraction, form handling, and semantic chunking.',
             protocol: '2025-01-01',
@@ -2944,7 +3455,7 @@ class AgenticPDF {
                 inputSchema: {
                     type: 'object',
                     properties: Object.fromEntries(tool.parameters.map(p => [p.name, {
-                            type: AgenticPDF._tsTypeToJsonType(p.type),
+                            type: IronDocuments._tsTypeToJsonType(p.type),
                             description: p.description,
                             ...(p.enum ? { enum: p.enum } : {}),
                             ...(p.default !== undefined ? { default: p.default } : {})
@@ -2960,37 +3471,37 @@ class AgenticPDF {
             })),
             resources: [
                 {
-                    uri: 'agenticpdf://ontology',
+                    uri: 'irondocuments://ontology',
                     name: 'Library Ontology',
                     description: 'Full JSON-LD ontology describing library concepts, capabilities, and relationships.',
                     mimeType: 'application/ld+json'
                 },
                 {
-                    uri: 'agenticpdf://capabilities',
+                    uri: 'irondocuments://capabilities',
                     name: 'Capability Map',
                     description: 'All library capabilities organized by category with method signatures.',
                     mimeType: 'application/json'
                 },
                 {
-                    uri: 'agenticpdf://workflows',
+                    uri: 'irondocuments://workflows',
                     name: 'Workflow Templates',
                     description: 'Pre-built workflow templates for common PDF processing operations.',
                     mimeType: 'application/json'
                 },
                 {
-                    uri: 'agenticpdf://schemas',
+                    uri: 'irondocuments://schemas',
                     name: 'JSON Schemas',
                     description: 'JSON Schema definitions for all input and output types including aPDF types.',
                     mimeType: 'application/schema+json'
                 },
                 {
-                    uri: 'agenticpdf://apdf-format',
+                    uri: 'irondocuments://apdf-format',
                     name: 'aPDF Format Specification',
                     description: 'aPDF v1.1 binary container format specification: 64-byte streaming header, optional AES-256-GCM encryption, section offsets for range requests.',
                     mimeType: 'application/json'
                 },
                 {
-                    uri: 'agenticpdf://apdf-schema',
+                    uri: 'irondocuments://apdf-schema',
                     name: 'aPDF Document Schema',
                     description: 'JSON Schema for APDFDocument: the JSON-LD metadata envelope with identifiers, artifacts, structure, AI content, display hints, and provenance.',
                     mimeType: 'application/schema+json'
@@ -3470,6 +3981,48 @@ class AgenticPDF {
                 },
                 required: ['version', 'flags', 'pdfEncrypted', 'metadataEncrypted', 'metadataOffset', 'metadataLength', 'pdfOffset', 'pdfLength', 'totalSize']
             },
+            // ── unified ingest types ──────────────────────────────────
+            IngestOptions: {
+                type: 'object',
+                description: 'Options for the unified ingest() / streamIngest() methods',
+                properties: {
+                    strategy: { type: 'string', enum: ['semantic', 'fixed', 'sliding', 'recursive'], default: 'semantic' },
+                    maxChunkSize: { type: 'number', minimum: 50, default: 1000 },
+                    overlapSize: { type: 'number', minimum: 0, default: 100 },
+                    includeStructure: { type: 'boolean', default: true },
+                    includePageText: { type: 'boolean', default: false },
+                    pageRange: { type: 'object', properties: { start: { type: 'number', minimum: 1 }, end: { type: 'number', minimum: 1 } } }
+                }
+            },
+            IngestResult: {
+                type: 'object',
+                description: 'Unified AI ingestion result with metadata, structure, chunks, and stats',
+                properties: {
+                    metadata: { description: 'PDF metadata' },
+                    documentType: { type: 'string' },
+                    summary: { type: 'string' },
+                    keywords: { type: 'array', items: { type: 'string' } },
+                    structure: { type: 'object', properties: { sections: { type: 'number' }, tables: { type: 'number' }, figures: { type: 'number' } } },
+                    chunks: { type: 'array', items: { $ref: '#/IngestChunk' } },
+                    pageTexts: { type: 'array', items: { type: 'object', properties: { page: { type: 'number' }, text: { type: 'string' } } } },
+                    stats: { type: 'object', properties: { pageCount: { type: 'number' }, fileSize: { type: 'number' }, totalChunks: { type: 'number' }, totalTokens: { type: 'number' }, processingTimeMs: { type: 'number' } } }
+                },
+                required: ['metadata', 'documentType', 'summary', 'keywords', 'structure', 'chunks', 'stats']
+            },
+            IngestChunk: {
+                type: 'object',
+                description: 'A semantic chunk from the unified ingest pipeline',
+                properties: {
+                    id: { type: 'string' },
+                    content: { type: 'string' },
+                    pages: { type: 'array', items: { type: 'number' } },
+                    type: { type: 'string' },
+                    tokenCount: { type: 'number', minimum: 0 },
+                    importance: { type: 'number', minimum: 0, maximum: 1 },
+                    keywords: { type: 'array', items: { type: 'string' } }
+                },
+                required: ['id', 'content', 'pages', 'type', 'tokenCount', 'importance', 'keywords']
+            },
             // ── agent skills & tools ────────────────────────────────────
             AgentTool: {
                 type: 'object',
@@ -3573,13 +4126,15 @@ class AgenticPDF {
      */
     static describeForAgent(format = 'openai') {
         return {
-            ontology: AgenticPDF.describe(),
-            tools: AgenticPDF.getToolSchemas(format),
-            schemas: AgenticPDF.getJSONSchemas(),
-            workflows: AgenticPDF.getWorkflows(),
+            ontology: IronDocuments.describe(),
+            tools: IronDocuments.getToolSchemas(format),
+            schemas: IronDocuments.getJSONSchemas(),
+            workflows: IronDocuments.getWorkflows(),
             agentGuidance: {
-                quickStart: 'Load a PDF with AgenticPDF.fromFile(file) or AgenticPDF.fromBuffer(buffer). Then call extractText(), getAIFeatures(), or generateSemanticChunks() as needed. For aPDF format, call generateAPDFMetadata() for JSON-LD or generateAPDFBinary() for the streaming binary container. Always call close() when done.',
+                quickStart: 'For fastest AI ingestion, call pdf.ingest() — one call returns metadata, structure, semantic chunks, and stats. For streaming, use pdf.streamIngest() which yields NDJSON records. Load a PDF with IronDocuments.fromFile(file) or IronDocuments.fromBuffer(buffer). Always call close() when done.',
                 bestPractices: [
+                    'Use ingest() for single-call AI-ready output (metadata + chunks + stats)',
+                    'Use streamIngest() for NDJSON streaming to pipelines or CLI',
                     'Use streaming APIs (streamText, streamSemanticChunks) for documents > 10MB',
                     'Set lazyLoad: true for documents > 50 pages',
                     'Set maxMemoryUsage for memory-constrained environments',
@@ -3599,7 +4154,7 @@ class AgenticPDF {
                 memoryManagement: 'Configure maxMemoryUsage in PDFOptions. Call unloadPages() to release parsed pages. Call close() to release all resources. For large documents, use streaming APIs to avoid loading entire document.',
                 streamingGuidance: 'All major operations support streaming via AsyncGenerator. Use streamText() for progressive text extraction, streamSemanticChunks() for RAG processing. Pass progressCallback in StreamOptions for progress tracking. The aPDF v1.1 binary format supports streaming via fixed 64-byte header with section offsets — use readAPDFHeader() with HTTP Range requests to read metadata without downloading the full file.',
                 apdfGuidance: {
-                    format: 'The aPDF (Agentic PDF) format is a JSON-LD metadata envelope that wraps PDF documents with rich, machine-readable metadata optimized for AI agent workflows.',
+                    format: 'The aPDF (Iron Documents) format is a JSON-LD metadata envelope that wraps PDF documents with rich, machine-readable metadata optimized for AI agent workflows.',
                     binaryContainer: 'The aPDF v1.1 binary container bundles the JSON metadata with the original PDF in a streaming-optimized format. Fixed 64-byte header contains section offsets for HTTP Range requests.',
                     encryption: 'AES-256-GCM encryption with PBKDF2-SHA256 key derivation. Metadata and PDF sections can be encrypted independently — keep metadata readable for indexing while protecting PDF content.',
                     identifiers: 'Supports DOI, arXiv, PMID, PMCID, ISBN, ISSN, Semantic Scholar, OpenAlex, HuggingFace IDs for cross-system linking.',
@@ -3608,11 +4163,11 @@ class AgenticPDF {
                     workflows: 'Use apdf-metadata for JSON generation, apdf-binary-generation for container creation, apdf-encrypted-generation for encrypted containers, apdf-round-trip for encode/decode verification, apdf-streaming-index for range-request indexing.'
                 },
                 agentSkillsGuidance: {
-                    overview: 'AgenticPDF provides a runtime for AI agents to register skills (groups of callable tools), create secure contexts, and dispatch tool calls. 6 built-in skills with 24 tools are auto-registered on first use.',
+                    overview: 'IronDocuments provides a runtime for AI agents to register skills (groups of callable tools), create secure contexts, and dispatch tool calls. 6 built-in skills with 24 tools are auto-registered on first use.',
                     security: 'Use AgentSecurityPolicy to control access: allowedTools/blockedTools for whitelisting/blacklisting, maxCallsPerSession for rate limiting, maxExecutionTimeMs for timeout enforcement, allowMutations to prevent document modification.',
                     middleware: 'Add AgentMiddleware to intercept tool calls: before() for validation/logging/auth, after() for result transformation, onError() for error handling. Middleware runs in registration order.',
-                    builtinSkills: 'Built-in skills: pdf-extraction (6 tools), pdf-analysis (4 tools), pdf-forms (3 tools), pdf-export (3 tools), apdf-format (4 tools), introspection (4 tools). All handlers call real library methods.',
-                    customSkills: 'Register custom skills via AgenticPDF.registerSkill(). Each skill has a unique id, tools array, and optional setup/teardown callbacks. Use activateSkills() on AgentContext to limit active skills.',
+                    builtinSkills: 'Built-in skills: pdf-extraction (6 tools), pdf-analysis (5 tools incl. ingest), pdf-forms (3 tools), pdf-export (3 tools), apdf-format (4 tools), introspection (4 tools). All handlers call real library methods.',
+                    customSkills: 'Register custom skills via IronDocuments.registerSkill(). Each skill has a unique id, tools array, and optional setup/teardown callbacks. Use activateSkills() on AgentContext to limit active skills.',
                     workflow: 'Create context: pdf.createAgentContext(options). Get schemas: ctx.getToolSchemas("openai"). Execute: ctx.executeTool({ name, arguments }). Check stats: ctx.getStats(). Close: ctx.close().'
                 }
             }
@@ -3623,7 +4178,7 @@ class AgenticPDF {
      */
     createAgentSession() {
         return {
-            sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+            sessionId: generateSecureId('session'),
             startedAt: Date.now(),
             documentPath: undefined,
             operationsPerformed: [],
@@ -3637,7 +4192,7 @@ class AgenticPDF {
      * automatically on first use.
      */
     static registerSkill(skill) {
-        if (AgenticPDF._skillRegistry.has(skill.id)) {
+        if (IronDocuments._skillRegistry.has(skill.id)) {
             throw new Error(`Skill '${skill.id}' is already registered`);
         }
         const toolNames = new Set();
@@ -3647,35 +4202,35 @@ class AgenticPDF {
             }
             toolNames.add(tool.name);
         }
-        AgenticPDF._skillRegistry.set(skill.id, skill);
+        IronDocuments._skillRegistry.set(skill.id, skill);
     }
     /**
      * Unregister a skill by ID.
      */
     static unregisterSkill(skillId) {
-        return AgenticPDF._skillRegistry.delete(skillId);
+        return IronDocuments._skillRegistry.delete(skillId);
     }
     /**
      * Get a registered skill by ID.
      */
     static getSkill(skillId) {
-        AgenticPDF._ensureBuiltins();
-        return AgenticPDF._skillRegistry.get(skillId);
+        IronDocuments._ensureBuiltins();
+        return IronDocuments._skillRegistry.get(skillId);
     }
     /**
      * List all registered skills.
      */
     static listSkills() {
-        AgenticPDF._ensureBuiltins();
-        return Array.from(AgenticPDF._skillRegistry.values());
+        IronDocuments._ensureBuiltins();
+        return Array.from(IronDocuments._skillRegistry.values());
     }
     /**
      * List all tools across registered skills, optionally filtered by category.
      */
     static listTools(category) {
-        AgenticPDF._ensureBuiltins();
+        IronDocuments._ensureBuiltins();
         const tools = [];
-        for (const skill of AgenticPDF._skillRegistry.values()) {
+        for (const skill of IronDocuments._skillRegistry.values()) {
             for (const tool of skill.tools) {
                 if (!category || tool.category === category) {
                     tools.push(tool);
@@ -3689,7 +4244,7 @@ class AgenticPDF {
      * tool execution, session tracking, middleware support, and security policies.
      */
     createAgentContext(options) {
-        AgenticPDF._ensureBuiltins();
+        IronDocuments._ensureBuiltins();
         return new AgentContext(this, options);
     }
     /**
@@ -3709,12 +4264,12 @@ class AgenticPDF {
     }
     /** Ensure built-in skills are registered. */
     static _ensureBuiltins() {
-        if (AgenticPDF._builtinsRegistered)
+        if (IronDocuments._builtinsRegistered)
             return;
-        AgenticPDF._builtinsRegistered = true;
-        for (const skill of AgenticPDF._createBuiltinSkills()) {
-            if (!AgenticPDF._skillRegistry.has(skill.id)) {
-                AgenticPDF._skillRegistry.set(skill.id, skill);
+        IronDocuments._builtinsRegistered = true;
+        for (const skill of IronDocuments._createBuiltinSkills()) {
+            if (!IronDocuments._skillRegistry.has(skill.id)) {
+                IronDocuments._skillRegistry.set(skill.id, skill);
             }
         }
     }
@@ -3846,6 +4401,25 @@ class AgenticPDF {
                         category: 'analysis',
                         requiresDocument: true,
                         handler: async (_args, ctx) => ctx.document.describeDocument()
+                    },
+                    {
+                        name: 'ingest',
+                        description: 'Unified single-call AI ingestion returning metadata, structure, chunks, and stats.',
+                        parameters: [
+                            { name: 'strategy', type: 'string', description: 'Chunking strategy', required: false },
+                            { name: 'maxChunkSize', type: 'number', description: 'Max tokens per chunk', required: false },
+                            { name: 'overlapSize', type: 'number', description: 'Token overlap between chunks', required: false },
+                            { name: 'includeStructure', type: 'boolean', description: 'Include structural analysis', required: false },
+                            { name: 'includePageText', type: 'boolean', description: 'Include per-page raw text', required: false }
+                        ],
+                        category: 'analysis',
+                        requiresDocument: true,
+                        handler: async (args, ctx) => {
+                            const result = await ctx.document.ingest(args);
+                            ctx.session.chunksProcessed += result.chunks.length;
+                            ctx.session.tokensEstimated += result.stats.totalTokens;
+                            return result;
+                        }
                     }
                 ]
             },
@@ -3929,7 +4503,7 @@ class AgenticPDF {
             {
                 id: 'apdf-format',
                 name: 'aPDF Format',
-                description: 'Generate and read aPDF (Agentic PDF) metadata envelopes and binary containers.',
+                description: 'Generate and read aPDF (Iron Documents) metadata envelopes and binary containers.',
                 version: '1.0.0',
                 tools: [
                     {
@@ -3971,7 +4545,7 @@ class AgenticPDF {
                         ],
                         category: 'apdf',
                         requiresDocument: false,
-                        handler: async (args, _ctx) => AgenticPDF.readAPDF(args.data, args.password)
+                        handler: async (args, _ctx) => IronDocuments.readAPDF(args.data, args.password)
                     },
                     {
                         name: 'readAPDFHeader',
@@ -3981,7 +4555,7 @@ class AgenticPDF {
                         ],
                         category: 'apdf',
                         requiresDocument: false,
-                        handler: async (args, _ctx) => AgenticPDF.readAPDFHeader(args.data)
+                        handler: async (args, _ctx) => IronDocuments.readAPDFHeader(args.data)
                     }
                 ]
             },
@@ -3998,7 +4572,7 @@ class AgenticPDF {
                         parameters: [],
                         category: 'introspection',
                         requiresDocument: false,
-                        handler: async () => AgenticPDF.describe()
+                        handler: async () => IronDocuments.describe()
                     },
                     {
                         name: 'describeForAgent',
@@ -4008,7 +4582,7 @@ class AgenticPDF {
                         ],
                         category: 'introspection',
                         requiresDocument: false,
-                        handler: async (args) => AgenticPDF.describeForAgent(args.format || 'openai')
+                        handler: async (args) => IronDocuments.describeForAgent(args.format || 'openai')
                     },
                     {
                         name: 'listSkills',
@@ -4016,7 +4590,7 @@ class AgenticPDF {
                         parameters: [],
                         category: 'introspection',
                         requiresDocument: false,
-                        handler: async () => AgenticPDF.listSkills().map(s => ({
+                        handler: async () => IronDocuments.listSkills().map(s => ({
                             id: s.id, name: s.name, description: s.description, version: s.version,
                             toolCount: s.tools.length, tools: s.tools.map(t => t.name)
                         }))
@@ -4029,7 +4603,7 @@ class AgenticPDF {
                         ],
                         category: 'introspection',
                         requiresDocument: false,
-                        handler: async (args) => AgenticPDF.listTools(args.category).map(t => ({
+                        handler: async (args) => IronDocuments.listTools(args.category).map(t => ({
                             name: t.name, description: t.description, category: t.category,
                             requiresDocument: t.requiresDocument,
                             parameters: t.parameters
@@ -4161,6 +4735,38 @@ class AgenticPDF {
                 example: "for await (const chunk of pdf.streamSemanticChunks()) { embed(chunk); }"
             },
             {
+                name: 'ingest',
+                description: 'Unified single-call AI ingestion. Returns metadata, document type, summary, keywords, structure, semantic chunks, and processing stats in one pass.',
+                parameters: [
+                    { name: 'strategy', type: 'string', description: 'Chunking strategy', required: false, enum: ['semantic', 'fixed', 'sliding', 'recursive'] },
+                    { name: 'maxChunkSize', type: 'number', description: 'Max tokens per chunk', required: false, minimum: 50, default: 1000 },
+                    { name: 'overlapSize', type: 'number', description: 'Token overlap between chunks', required: false, minimum: 0, default: 100 },
+                    { name: 'includeStructure', type: 'boolean', description: 'Include structural analysis', required: false, default: true },
+                    { name: 'includePageText', type: 'boolean', description: 'Include per-page raw text', required: false, default: false },
+                    { name: 'pageRange', type: 'object', description: 'Pages to process {start, end}', required: false }
+                ],
+                returnType: 'IngestResult',
+                category: 'analysis',
+                streaming: false,
+                requiresDocument: true,
+                example: "const result = await pdf.ingest({ strategy: 'semantic', maxChunkSize: 1000 });"
+            },
+            {
+                name: 'streamIngest',
+                description: 'Streaming AI ingestion yielding NDJSON records: header (metadata + structure) → chunk records → footer (stats).',
+                parameters: [
+                    { name: 'strategy', type: 'string', description: 'Chunking strategy', required: false, enum: ['semantic', 'fixed', 'sliding', 'recursive'] },
+                    { name: 'maxChunkSize', type: 'number', description: 'Max tokens per chunk', required: false, minimum: 50, default: 1000 },
+                    { name: 'overlapSize', type: 'number', description: 'Token overlap between chunks', required: false, minimum: 0, default: 100 },
+                    { name: 'includeStructure', type: 'boolean', description: 'Include structural analysis in header', required: false, default: true }
+                ],
+                returnType: 'AsyncGenerator<Record<string, any>>',
+                category: 'analysis',
+                streaming: true,
+                requiresDocument: true,
+                example: "for await (const record of pdf.streamIngest()) { process.stdout.write(JSON.stringify(record) + '\\n'); }"
+            },
+            {
                 name: 'search',
                 description: 'Search for text within the document, returning matches with page numbers and positions.',
                 parameters: [
@@ -4289,7 +4895,7 @@ class AgenticPDF {
             },
             {
                 name: 'generateAPDFMetadata',
-                description: 'Generate an aPDF (Agentic PDF) JSON-LD metadata envelope from the loaded PDF. Extracts identifiers (DOI, arXiv, ORCID), linked artifacts (HuggingFace, GitHub), AI-ready semantic chunks, document structure, display hints, and provenance.',
+                description: 'Generate an aPDF (Iron Documents) JSON-LD metadata envelope from the loaded PDF. Extracts identifiers (DOI, arXiv, ORCID), linked artifacts (HuggingFace, GitHub), AI-ready semantic chunks, document structure, display hints, and provenance.',
                 parameters: [],
                 returnType: 'APDFDocument',
                 category: 'apdf',
@@ -4323,7 +4929,7 @@ class AgenticPDF {
                 category: 'apdf',
                 streaming: false,
                 requiresDocument: false,
-                example: "const { metadata, pdfData } = await AgenticPDF.readAPDF(data, 'secret');"
+                example: "const { metadata, pdfData } = await IronDocuments.readAPDF(data, 'secret');"
             },
             {
                 name: 'readAPDFHeader',
@@ -4335,7 +4941,7 @@ class AgenticPDF {
                 category: 'apdf',
                 streaming: false,
                 requiresDocument: false,
-                example: "const header = AgenticPDF.readAPDFHeader(first64bytes);"
+                example: "const header = IronDocuments.readAPDFHeader(first64bytes);"
             },
             {
                 name: 'readAPDFMetadata',
@@ -4348,7 +4954,7 @@ class AgenticPDF {
                 category: 'apdf',
                 streaming: false,
                 requiresDocument: false,
-                example: "const meta = await AgenticPDF.readAPDFMetadata(data);"
+                example: "const meta = await IronDocuments.readAPDFMetadata(data);"
             },
             // ── agent skills & tools ────────────────────────────────────
             {
@@ -4361,7 +4967,7 @@ class AgenticPDF {
                 category: 'agent',
                 streaming: false,
                 requiresDocument: false,
-                example: "AgenticPDF.registerSkill({ id: 'my-skill', name: 'My Skill', description: 'Custom tools', version: '1.0', tools: [tool] });"
+                example: "IronDocuments.registerSkill({ id: 'my-skill', name: 'My Skill', description: 'Custom tools', version: '1.0', tools: [tool] });"
             },
             {
                 name: 'unregisterSkill',
@@ -4373,7 +4979,7 @@ class AgenticPDF {
                 category: 'agent',
                 streaming: false,
                 requiresDocument: false,
-                example: "const removed = AgenticPDF.unregisterSkill('my-skill');"
+                example: "const removed = IronDocuments.unregisterSkill('my-skill');"
             },
             {
                 name: 'listSkills',
@@ -4383,7 +4989,7 @@ class AgenticPDF {
                 category: 'agent',
                 streaming: false,
                 requiresDocument: false,
-                example: "const skills = AgenticPDF.listSkills();"
+                example: "const skills = IronDocuments.listSkills();"
             },
             {
                 name: 'listTools',
@@ -4395,7 +5001,7 @@ class AgenticPDF {
                 category: 'agent',
                 streaming: false,
                 requiresDocument: false,
-                example: "const tools = AgenticPDF.listTools('extraction');"
+                example: "const tools = IronDocuments.listTools('extraction');"
             },
             {
                 name: 'createAgentContext',
@@ -4455,7 +5061,7 @@ class AgenticPDF {
             version: 1,
             metadata: {
                 component: {
-                    name: 'agenticpdf',
+                    name: 'irondocuments',
                     version: '1.0.0',
                     type: 'library',
                     license: 'AGPL-3.0-or-later'
@@ -4464,12 +5070,12 @@ class AgenticPDF {
             },
             components: [
                 {
-                    name: 'agenticpdf',
+                    name: 'irondocuments',
                     version: '1.0.0',
                     license: 'AGPL-3.0-or-later',
                     type: 'library',
-                    purl: 'pkg:npm/agenticpdf@1.0.0',
-                    supplier: 'Nervosys, LLC'
+                    purl: 'pkg:npm/irondocuments@1.0.0',
+                    supplier: 'NERVOSYS, LLC'
                 }
                 // Zero external runtime dependencies — single-file architecture
             ]
@@ -4929,9 +5535,9 @@ class AgenticPDF {
 // Agent Skills & Tools Runtime
 // ==========================================================================
 /** Static skill registry shared across all instances. */
-AgenticPDF._skillRegistry = new Map();
+IronDocuments._skillRegistry = new Map();
 /** Whether built-in skills have been registered. */
-AgenticPDF._builtinsRegistered = false;
+IronDocuments._builtinsRegistered = false;
 /** Format seconds to SRT timestamp (HH:MM:SS,mmm). */
 function _formatSrtTime(totalSeconds) {
     const h = Math.floor(totalSeconds / 3600);
@@ -4939,6 +5545,53 @@ function _formatSrtTime(totalSeconds) {
     const s = Math.floor(totalSeconds % 60);
     const ms = Math.round((totalSeconds % 1) * 1000);
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
+}
+/**
+ * Escape a string so it matches literally inside a regular expression.
+ *
+ * Anything taken from a document is attacker-controlled, and interpolating it
+ * into a pattern hands the attacker the regex engine: metacharacters change
+ * what is matched, an unbalanced bracket throws where nothing catches it, and
+ * a nested quantifier turns a linear scan into a catastrophic one over text
+ * that may be megabytes. Author metadata reaches a pattern this way (CWE-1333).
+ */
+function escapeRegExp(literal) {
+    return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+/**
+ * The longest user-supplied regular expression `search()` will compile.
+ *
+ * A bound on the pattern is not a bound on its running time -- `(a+)+$` is
+ * nine characters -- so this is a first line only. The match loop carries a
+ * deadline as well (CWE-1333).
+ */
+const MAX_SEARCH_PATTERN_LENGTH = 1000;
+/** How long one `search()` may spend running a user-supplied pattern. */
+const SEARCH_TIME_BUDGET_MS = 2000;
+/**
+ * Generate a secure random ID string using crypto APIs (CWE-338 mitigation).
+ * Falls back to Math.random() only in environments without crypto support.
+ */
+function generateSecureId(prefix) {
+    const timestamp = Date.now();
+    let random;
+    try {
+        if (typeof globalThis !== 'undefined' && globalThis.crypto?.getRandomValues) {
+            const bytes = new Uint8Array(6);
+            globalThis.crypto.getRandomValues(bytes);
+            random = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+        }
+        else {
+            // Node.js fallback
+            const { randomBytes } = require('crypto');
+            random = randomBytes(6).toString('hex');
+        }
+    }
+    catch {
+        // Last resort fallback for constrained environments
+        random = Math.random().toString(36).substring(2, 14);
+    }
+    return `${prefix}_${timestamp}_${random}`;
 }
 // ============================================================================
 // PDF Parser Implementation
@@ -5301,6 +5954,32 @@ class PDFParser {
                 else if (!authResult.authenticated) {
                     throw new Error('Invalid password for encrypted PDF');
                 }
+            }
+        }
+        // Detect catalog-level features
+        metadata.hasPageLabels = catalog.entries.has('PageLabels');
+        metadata.hasStructureTree = catalog.entries.has('StructTreeRoot');
+        // Check for MarkInfo
+        const markInfoRef = catalog.entries.get('MarkInfo');
+        if (markInfoRef) {
+            const markObj = markInfoRef.type === PDFObjectType.Reference
+                ? this.parseIndirectObject(markInfoRef.value.objectNumber, markInfoRef.value.generationNumber, xref)
+                : markInfoRef;
+            if (markObj.type === PDFObjectType.Dictionary) {
+                const markedEntry = markObj.value.entries.get('Marked');
+                if (markedEntry?.type === PDFObjectType.Boolean) {
+                    metadata.marked = markedEntry.value;
+                }
+            }
+        }
+        // Check for embedded files
+        const namesRef = catalog.entries.get('Names');
+        if (namesRef) {
+            const namesObj = namesRef.type === PDFObjectType.Reference
+                ? this.parseIndirectObject(namesRef.value.objectNumber, namesRef.value.generationNumber, xref)
+                : namesRef;
+            if (namesObj.type === PDFObjectType.Dictionary) {
+                metadata.hasEmbeddedFiles = namesObj.value.entries.has('EmbeddedFiles');
             }
         }
         return metadata;
@@ -8188,6 +8867,7 @@ class TextExtractor {
             // Current graphics state
             let currentState = {
                 textMatrix: [1, 0, 0, 1, 0, 0],
+                ctm: [1, 0, 0, 1, 0, 0],
                 fontSize: 12,
                 fontName: 'Helvetica',
                 textLeading: 0,
@@ -8198,6 +8878,10 @@ class TextExtractor {
                 renderingMode: 0,
                 fillColor: { r: 0, g: 0, b: 0 }
             };
+            // Graphics state stack for q/Q save/restore
+            const stateStack = [];
+            // Marked content stack for BMC/BDC/EMC nesting
+            const markedContentStack = [];
             // Line matrix for T* operator
             let lineMatrix = [1, 0, 0, 1, 0, 0];
             // Debug: log text positioning operators
@@ -8310,6 +8994,132 @@ class TextExtractor {
                             currentState.textLeading = op.operands[0];
                         }
                         break;
+                    case 'Tc': // Set character spacing
+                        if (op.operands.length >= 1) {
+                            currentState.charSpace = op.operands[0];
+                        }
+                        break;
+                    case 'Tw': // Set word spacing
+                        if (op.operands.length >= 1) {
+                            currentState.wordSpace = op.operands[0];
+                        }
+                        break;
+                    case 'Tz': // Set horizontal scaling
+                        if (op.operands.length >= 1) {
+                            currentState.horizontalScaling = op.operands[0];
+                        }
+                        break;
+                    case 'Tr': // Set text rendering mode
+                        if (op.operands.length >= 1) {
+                            currentState.renderingMode = op.operands[0];
+                        }
+                        break;
+                    case 'Ts': // Set text rise
+                        if (op.operands.length >= 1) {
+                            currentState.textRise = op.operands[0];
+                        }
+                        break;
+                    // Graphics state operators
+                    case 'q': // Save graphics state
+                        stateStack.push({
+                            ...currentState,
+                            textMatrix: [...currentState.textMatrix],
+                            ctm: [...currentState.ctm],
+                            fillColor: { ...currentState.fillColor },
+                        });
+                        break;
+                    case 'Q': // Restore graphics state
+                        if (stateStack.length > 0) {
+                            currentState = stateStack.pop();
+                        }
+                        break;
+                    case 'cm': // Concatenate matrix (update CTM)
+                        if (op.operands.length >= 6) {
+                            const [a, b, c, d, e, f] = op.operands;
+                            const prev = currentState.ctm;
+                            currentState.ctm = [
+                                prev[0] * a + prev[2] * b,
+                                prev[1] * a + prev[3] * b,
+                                prev[0] * c + prev[2] * d,
+                                prev[1] * c + prev[3] * d,
+                                prev[0] * e + prev[2] * f + prev[4],
+                                prev[1] * e + prev[3] * f + prev[5],
+                            ];
+                        }
+                        break;
+                    // Fill color operators (track for text style)
+                    case 'g': // Grayscale fill
+                        if (op.operands.length >= 1) {
+                            const gray = Math.round(op.operands[0] * 255);
+                            currentState.fillColor = { r: gray, g: gray, b: gray };
+                        }
+                        break;
+                    case 'rg': // RGB fill
+                        if (op.operands.length >= 3) {
+                            currentState.fillColor = {
+                                r: Math.round(op.operands[0] * 255),
+                                g: Math.round(op.operands[1] * 255),
+                                b: Math.round(op.operands[2] * 255),
+                            };
+                        }
+                        break;
+                    case 'k': // CMYK fill
+                        if (op.operands.length >= 4) {
+                            const ck = op.operands[0];
+                            const mk = op.operands[1];
+                            const yk = op.operands[2];
+                            const kk = op.operands[3];
+                            currentState.fillColor = {
+                                r: Math.round(255 * (1 - Math.min(1, ck * (1 - kk) + kk))),
+                                g: Math.round(255 * (1 - Math.min(1, mk * (1 - kk) + kk))),
+                                b: Math.round(255 * (1 - Math.min(1, yk * (1 - kk) + kk))),
+                            };
+                        }
+                        break;
+                    // Marked content operators
+                    case 'BMC': // Begin marked content (no properties)
+                        {
+                            const tag = op.operands[0] || '';
+                            markedContentStack.push({ tag });
+                            currentState.markedContentTag = tag;
+                            currentState.markedContentProps = undefined;
+                        }
+                        break;
+                    case 'BDC': // Begin marked content with properties
+                        {
+                            const bdcTag = op.operands[0] || '';
+                            let bdcProps;
+                            if (op.operands.length >= 2 && typeof op.operands[1] === 'object' && op.operands[1] !== null) {
+                                bdcProps = {};
+                                const propObj = op.operands[1];
+                                if (propObj.entries && propObj.entries instanceof Map) {
+                                    for (const [k, v] of propObj.entries) {
+                                        bdcProps[k] = v.value ?? v;
+                                    }
+                                }
+                                else if (typeof propObj === 'object') {
+                                    for (const k of Object.keys(propObj)) {
+                                        bdcProps[k] = propObj[k];
+                                    }
+                                }
+                            }
+                            markedContentStack.push({ tag: bdcTag, props: bdcProps });
+                            currentState.markedContentTag = bdcTag;
+                            currentState.markedContentProps = bdcProps;
+                        }
+                        break;
+                    case 'EMC': // End marked content
+                        markedContentStack.pop();
+                        if (markedContentStack.length > 0) {
+                            const top = markedContentStack[markedContentStack.length - 1];
+                            currentState.markedContentTag = top.tag;
+                            currentState.markedContentProps = top.props;
+                        }
+                        else {
+                            currentState.markedContentTag = undefined;
+                            currentState.markedContentProps = undefined;
+                        }
+                        break;
                 }
             }
             PerformanceMonitor.endOperation(metric);
@@ -8325,7 +9135,7 @@ class TextExtractor {
         // Calculate text metrics
         const width = text.length * state.fontSize * 0.5; // Approximate
         const height = state.fontSize;
-        return {
+        const tc = {
             text: text,
             x: state.textMatrix[4],
             y: page.height - state.textMatrix[5], // Flip Y coordinate
@@ -8340,10 +9150,30 @@ class TextExtractor {
                 italic: state.fontName.toLowerCase().includes('italic'),
                 underline: false,
                 strikethrough: false,
-                color: state.fillColor
+                color: state.fillColor ? { ...state.fillColor } : { r: 0, g: 0, b: 0 }
             },
             pageNumber: page.pageNumber
         };
+        // Expose layout context when non-default
+        if (state.charSpace !== 0)
+            tc.charSpacing = state.charSpace;
+        if (state.wordSpace !== 0)
+            tc.wordSpacing = state.wordSpace;
+        if (state.textLeading !== 0)
+            tc.textLeading = state.textLeading;
+        if (state.horizontalScaling !== 100)
+            tc.horizontalScaling = state.horizontalScaling;
+        if (state.textRise !== 0)
+            tc.textRise = state.textRise;
+        if (state.renderingMode !== 0)
+            tc.renderingMode = state.renderingMode;
+        if (state.markedContentTag) {
+            tc.markedContent = {
+                tag: state.markedContentTag,
+                properties: state.markedContentProps,
+            };
+        }
+        return tc;
     }
     decodeTextWithFont(rawText, state) {
         const font = state.fontResource;
@@ -9109,6 +9939,18 @@ class PretextLayout {
                 return { width };
             }
         };
+    }
+    /**
+     * Public API: measure text width via Canvas, with caching.
+     * Useful as a fallback for glyph advance calculation during rendering
+     * when PDF font metrics are unavailable.
+     *
+     * @param text  - The string to measure.
+     * @param font  - CSS font shorthand (e.g. `'12px Arial'`).
+     * @returns Width in CSS pixels at the given font size.
+     */
+    static measure(text, font) {
+        return PretextLayout._measure(text, font);
     }
     /** Measure text width via Canvas, with caching. */
     static _measure(text, font) {
@@ -10743,6 +11585,9 @@ class PDFSearcher {
         const queryLower = query.toLowerCase();
         let regex = null;
         if (options?.regex) {
+            if (query.length > MAX_SEARCH_PATTERN_LENGTH) {
+                throw new Error(`Regex pattern exceeds ${MAX_SEARCH_PATTERN_LENGTH} characters`);
+            }
             try {
                 regex = new RegExp(query, options.caseSensitive ? 'g' : 'gi');
             }
@@ -10750,6 +11595,12 @@ class PDFSearcher {
                 throw new Error(`Invalid regex pattern: ${query}`);
             }
         }
+        // A deadline rather than a pattern analysis. Whether a regex backtracks
+        // catastrophically is not something a length check can decide, and the
+        // engine cannot be interrupted once inside a single `exec`; what this
+        // bounds is the loop around it, which is where a pattern matching emptily
+        // or near-emptily spends a document's worth of time.
+        const searchDeadline = Date.now() + SEARCH_TIME_BUDGET_MS;
         for (const block of text) {
             const content = options?.caseSensitive ? block.text : block.text.toLowerCase();
             const searchQuery = options?.caseSensitive ? query : queryLower;
@@ -10763,6 +11614,13 @@ class PDFSearcher {
                         index: match.index,
                         length: match[0].length
                     });
+                    // An empty match does not advance `lastIndex`, so without this a
+                    // pattern such as `a*` never terminates.
+                    if (match[0].length === 0)
+                        regex.lastIndex++;
+                    if (Date.now() > searchDeadline) {
+                        throw new Error('Regex search exceeded its time budget');
+                    }
                 }
             }
             else if (options?.wholeWord) {
@@ -11279,6 +12137,136 @@ class AnnotationExtractor {
                 };
             }
         }
+        // Parse FileAttachment-specific properties
+        if (annotation.type === AnnotationType.FileAttachment) {
+            this.parseFileAttachmentProperties(annotation, dict);
+        }
+        // Parse Sound-specific properties
+        if (annotation.type === AnnotationType.Sound) {
+            this.parseSoundProperties(annotation, dict);
+        }
+        // Parse Movie-specific properties
+        if (annotation.type === AnnotationType.Movie) {
+            this.parseMovieProperties(annotation, dict);
+        }
+    }
+    resolveObj(obj) {
+        if (obj && obj.type === PDFObjectType.Reference) {
+            const ref = obj.value;
+            const parser = this.pdf.parser;
+            const xref = this.pdf.xrefTable;
+            if (parser && xref) {
+                return parser.parseIndirectObject(ref.objectNumber, ref.generationNumber, xref);
+            }
+        }
+        return obj;
+    }
+    parseFileAttachmentProperties(annotation, dict) {
+        const fsRef = dict.entries.get('FS');
+        if (!fsRef)
+            return;
+        const fsObj = this.resolveObj(fsRef);
+        if (fsObj.type !== PDFObjectType.Dictionary)
+            return;
+        const fsDict = fsObj.value;
+        const spec = {
+            name: this.getStringFromDict(fsDict, 'F')
+                || this.getStringFromDict(fsDict, 'UF')
+                || this.getStringFromDict(fsDict, 'Desc')
+                || 'unknown',
+            description: this.getStringFromDict(fsDict, 'Desc'),
+        };
+        // Extract the embedded file stream from /EF dictionary
+        const efRef = fsDict.entries.get('EF');
+        if (efRef) {
+            const efObj = this.resolveObj(efRef);
+            if (efObj.type === PDFObjectType.Dictionary) {
+                const efDict = efObj.value;
+                const fileStreamRef = efDict.entries.get('F') || efDict.entries.get('UF');
+                if (fileStreamRef) {
+                    const fileStreamObj = this.resolveObj(fileStreamRef);
+                    if (fileStreamObj.type === PDFObjectType.Dictionary) {
+                        const streamDict = fileStreamObj.value;
+                        // Extract Params if available
+                        const paramsRef = streamDict.entries.get('Params');
+                        if (paramsRef) {
+                            const paramsObj = this.resolveObj(paramsRef);
+                            if (paramsObj.type === PDFObjectType.Dictionary) {
+                                const paramsDict = paramsObj.value;
+                                spec.size = this.getNumberFromDict(paramsDict, 'Size');
+                                const checksum = this.getStringFromDict(paramsDict, 'CheckSum');
+                                if (checksum)
+                                    spec.checksum = checksum;
+                                const creationStr = this.getStringFromDict(paramsDict, 'CreationDate');
+                                if (creationStr) {
+                                    spec.creationDate = this.pdf.parser?.parsePDFDate?.(creationStr);
+                                }
+                                const modStr = this.getStringFromDict(paramsDict, 'ModDate');
+                                if (modStr) {
+                                    spec.modificationDate = this.pdf.parser?.parsePDFDate?.(modStr);
+                                }
+                            }
+                        }
+                        // Extract subtype (MIME type)
+                        const subtypeObj = streamDict.entries.get('Subtype');
+                        if (subtypeObj?.type === PDFObjectType.Name) {
+                            spec.mimeType = subtypeObj.value.replace('#2F', '/');
+                        }
+                    }
+                    // Try to get raw data from the stream object
+                    if (fileStreamObj.type === PDFObjectType.Stream) {
+                        spec.data = fileStreamObj.value;
+                    }
+                }
+            }
+        }
+        annotation.fileSpec = spec;
+    }
+    parseSoundProperties(annotation, dict) {
+        const soundRef = dict.entries.get('Sound');
+        if (!soundRef)
+            return;
+        const soundObj = this.resolveObj(soundRef);
+        const spec = {};
+        if (soundObj.type === PDFObjectType.Dictionary) {
+            const soundDict = soundObj.value;
+            spec.samplingRate = this.getNumberFromDict(soundDict, 'R');
+            spec.channels = this.getNumberFromDict(soundDict, 'C') || 1;
+            spec.bitsPerSample = this.getNumberFromDict(soundDict, 'B') || 8;
+            spec.encoding = this.getStringFromDict(soundDict, 'E') || 'Raw';
+        }
+        else if (soundObj.type === PDFObjectType.Stream) {
+            spec.data = soundObj.value;
+        }
+        annotation.soundSpec = spec;
+    }
+    parseMovieProperties(annotation, dict) {
+        const movieRef = dict.entries.get('Movie');
+        if (!movieRef)
+            return;
+        const movieObj = this.resolveObj(movieRef);
+        const spec = {};
+        if (movieObj.type === PDFObjectType.Dictionary) {
+            const movieDict = movieObj.value;
+            // /F entry is the file specification for the movie file
+            const fRef = movieDict.entries.get('F');
+            if (fRef) {
+                const fObj = this.resolveObj(fRef);
+                if (fObj.type === PDFObjectType.String) {
+                    spec.fileName = fObj.value;
+                }
+                else if (fObj.type === PDFObjectType.Dictionary) {
+                    const fDict = fObj.value;
+                    spec.fileName = this.getStringFromDict(fDict, 'F')
+                        || this.getStringFromDict(fDict, 'UF');
+                }
+            }
+            const posterObj = movieDict.entries.get('Poster');
+            if (posterObj?.type === PDFObjectType.Boolean) {
+                spec.poster = posterObj.value;
+            }
+        }
+        annotation.movieSpec = spec;
     }
     parseColor(colorArray) {
         if (colorArray.length === 1) {
@@ -13387,6 +14375,16 @@ class PDFGraphicsExecutor {
             this.ctx.font = `${fontStyle}${Math.abs(fontSize)}px ${canvasFont}`;
         }
     }
+    /** Check whether the current font resource has explicit width data from the PDF. */
+    fontHasExplicitWidths() {
+        const font = this.currentFontResource;
+        if (!font)
+            return false;
+        return !!((font.cidWidths && font.cidWidths.size > 0) ||
+            (font.widths && font.widths.length > 0) ||
+            font.defaultWidth !== undefined ||
+            font.missingWidth !== undefined);
+    }
     showText(operands) {
         if (operands.length === 0)
             return;
@@ -13471,7 +14469,13 @@ class PDFGraphicsExecutor {
                     this.ctx.fillText(displayChar, renderX, renderY);
                 }
             }
-            const glyphWidth = PDFGlyphMetrics.getCharWidth(charCode, this.currentFontResource, fontSize);
+            const glyphWidth = this.fontHasExplicitWidths()
+                ? PDFGlyphMetrics.getCharWidth(charCode, this.currentFontResource, fontSize)
+                : shouldRender && displayChar
+                    // Use PretextLayout's cached canvas measurement for accurate advance
+                    // when the PDF lacks embedded font metrics.
+                    ? PretextLayout.measure(displayChar, (this.textState.fontStyle || '') + effectiveFontSize + 'px ' + this.textState.font) / tmScale
+                    : PDFGlyphMetrics.getCharWidth(charCode, this.currentFontResource, fontSize);
             let advance = glyphWidth + charSpace;
             if (charCode === 32)
                 advance += wordSpace;
@@ -14047,7 +15051,7 @@ class PDFRenderer {
             enableThemeToggle: true,
             persistTheme: true,
             defaultTheme: 'dark',
-            themeStorageKey: 'AgenticPDF-theme'
+            themeStorageKey: 'IronDocuments-theme'
         };
     }
     /**
@@ -14084,7 +15088,7 @@ class PDFRenderer {
             const themeManager = ThemeManager.getInstance();
             themeManager.initialize({
                 defaultTheme: opts.defaultTheme || 'dark',
-                storageKey: opts.themeStorageKey || 'AgenticPDF-theme',
+                storageKey: opts.themeStorageKey || 'IronDocuments-theme',
                 persistTheme: opts.persistTheme !== false
             });
         }
@@ -14137,7 +15141,7 @@ class PDFRenderer {
     /**
      * Create a complete PDF viewer with optimal configuration including theme toggle
      * @param container - Container element for the viewer
-     * @param pdf - AgenticPDF instance
+     * @param pdf - IronDocuments instance
      * @param options - Render options
      * @returns Object with viewer elements and methods
      */
@@ -14223,6 +15227,13 @@ class PDFRenderer {
         // Simple approach: Draw graphics operators directly to canvas
         // Native TypeScript rendering implementation
         await this.renderPageContent(ctx, page, scale);
+        // Render annotations and form fields if enabled
+        if (this.options?.renderAnnotations !== false) {
+            await this.renderAnnotations(ctx, page);
+        }
+        if (this.options?.renderText !== false) {
+            await this.renderForms(ctx, page);
+        }
         ctx.restore();
     }
     async renderPageContent(ctx, page, scale) {
@@ -14362,15 +15373,16 @@ class PDFRenderer {
                         if (inText && op.operands.length > 0) {
                             const text = PDFTextDecoder.decode(op.operands[0]);
                             if (text) {
+                                const fontStr = `${Math.abs(textState.fontSize)}px ${textState.font}`;
                                 ctx.save();
                                 const tm = textState.matrix;
-                                ctx.font = `${Math.abs(textState.fontSize)}px ${textState.font}`;
+                                ctx.font = fontStr;
                                 ctx.fillStyle = '#000000';
                                 ctx.transform(tm[0], tm[1], tm[2], tm[3], tm[4], tm[5]);
                                 ctx.scale(1, -1);
                                 ctx.fillText(text, 0, -(textState.rise || 0));
                                 ctx.restore();
-                                const w = text.length * textState.fontSize * 0.5;
+                                const w = PretextLayout.measure(text, fontStr);
                                 textState.matrix[4] += w * textState.matrix[0];
                                 textState.matrix[5] += w * textState.matrix[1];
                             }
@@ -14382,15 +15394,16 @@ class PDFRenderer {
                                 if (typeof item === 'string') {
                                     const text = PDFTextDecoder.decode(item);
                                     if (text) {
+                                        const fontStr = `${Math.abs(textState.fontSize)}px ${textState.font}`;
                                         ctx.save();
                                         const tm = textState.matrix;
-                                        ctx.font = `${Math.abs(textState.fontSize)}px ${textState.font}`;
+                                        ctx.font = fontStr;
                                         ctx.fillStyle = '#000000';
                                         ctx.transform(tm[0], tm[1], tm[2], tm[3], tm[4], tm[5]);
                                         ctx.scale(1, -1);
                                         ctx.fillText(text, 0, -(textState.rise || 0));
                                         ctx.restore();
-                                        const w = text.length * textState.fontSize * 0.5;
+                                        const w = PretextLayout.measure(text, fontStr);
                                         textState.matrix[4] += w * textState.matrix[0];
                                         textState.matrix[5] += w * textState.matrix[1];
                                     }
@@ -14498,6 +15511,29 @@ class PDFRenderer {
                 ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
                 ctx.stroke();
                 break;
+            case AnnotationType.FreeText:
+                if (annotation.contents) {
+                    const fontSize = 12;
+                    const fontStr = `${fontSize}px Arial`;
+                    const lineHeight = fontSize * 1.2;
+                    const padding = 4;
+                    const boxX = annotation.rect.x;
+                    const boxY = page.height - annotation.rect.y - annotation.rect.height;
+                    // Use PretextLayout for accurate multiline text wrapping
+                    const prepared = PretextLayout.prepareWithSegments(annotation.contents, fontStr);
+                    const result = PretextLayout.layoutWithLines(prepared, annotation.rect.width - padding * 2, lineHeight);
+                    ctx.fillStyle = annotation.color
+                        ? `rgba(${annotation.color.r}, ${annotation.color.g}, ${annotation.color.b}, 1)`
+                        : '#000000';
+                    ctx.font = fontStr;
+                    for (let i = 0; i < result.lines.length; i++) {
+                        const y = boxY + padding + lineHeight * (i + 1);
+                        if (y > boxY + annotation.rect.height)
+                            break; // clip to rect
+                        ctx.fillText(result.lines[i].text, boxX + padding, y);
+                    }
+                }
+                break;
         }
         ctx.restore();
     }
@@ -14516,9 +15552,28 @@ class PDFRenderer {
         // Draw field value
         if (field.value) {
             ctx.fillStyle = '#000000';
-            ctx.font = '12px Arial';
+            const fontSize = 12;
+            const fontStr = `${fontSize}px Arial`;
+            ctx.font = fontStr;
             if (field.type === FormFieldType.Text) {
-                ctx.fillText(String(field.value), field.rect.x + 2, page.height - field.rect.y - 4);
+                const text = String(field.value);
+                const padding = 2;
+                const baseY = page.height - field.rect.y - field.rect.height;
+                const lineHeight = fontSize * 1.2;
+                if (field.multiline) {
+                    // Use PretextLayout for multiline text wrapping within the field bounds
+                    const prepared = PretextLayout.prepareWithSegments(text, fontStr);
+                    const result = PretextLayout.layoutWithLines(prepared, field.rect.width - padding * 2, lineHeight);
+                    for (let i = 0; i < result.lines.length; i++) {
+                        const y = baseY + padding + lineHeight * (i + 1);
+                        if (y > page.height - field.rect.y)
+                            break; // clip to field bounds
+                        ctx.fillText(result.lines[i].text, field.rect.x + padding, y);
+                    }
+                }
+                else {
+                    ctx.fillText(text, field.rect.x + padding, baseY + lineHeight);
+                }
             }
             else if (field.type === FormFieldType.Button && field.value) {
                 // Draw checkmark for checked checkbox
@@ -15445,7 +16500,7 @@ function renderTextLayer(options) {
 class ThemeManager {
     constructor() {
         this.currentTheme = 'dark';
-        this.storageKey = 'AgenticPDF-theme';
+        this.storageKey = 'IronDocuments-theme';
         this.observers = [];
         this.loadTheme();
     }
@@ -15893,7 +16948,7 @@ class AnnotationPersistence {
     /** Create a text annotation (sticky note). */
     createTextAnnotation(pageNumber, x, y, contents, options) {
         const annotation = {
-            id: `annot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            id: generateSecureId('annot'),
             type: AnnotationType.Text,
             rect: { x, y, width: 24, height: 24 },
             pageNumber,
@@ -15910,7 +16965,7 @@ class AnnotationPersistence {
     /** Create a highlight annotation. */
     createHighlightAnnotation(pageNumber, rect, options) {
         const annotation = {
-            id: `annot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            id: generateSecureId('annot'),
             type: AnnotationType.Highlight,
             rect,
             pageNumber,
@@ -15927,7 +16982,7 @@ class AnnotationPersistence {
     /** Create a free-text annotation. */
     createFreeTextAnnotation(pageNumber, rect, text, options) {
         const annotation = {
-            id: `annot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            id: generateSecureId('annot'),
             type: AnnotationType.FreeText,
             rect,
             pageNumber,
@@ -15944,7 +16999,7 @@ class AnnotationPersistence {
     /** Create an ink (freehand drawing) annotation. */
     createInkAnnotation(pageNumber, rect, options) {
         const annotation = {
-            id: `annot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            id: generateSecureId('annot'),
             type: AnnotationType.Ink,
             rect,
             pageNumber,
@@ -16188,7 +17243,7 @@ class PDFAConverter {
         xmp += '<rdf:Description rdf:about=""\n';
         xmp += '  xmlns:xmp="http://ns.adobe.com/xap/1.0/">\n';
         xmp += `  <xmp:CreateDate>${new Date().toISOString()}</xmp:CreateDate>\n`;
-        xmp += `  <xmp:CreatorTool>AgenticPDF</xmp:CreatorTool>\n`;
+        xmp += `  <xmp:CreatorTool>IronDocuments</xmp:CreatorTool>\n`;
         xmp += '</rdf:Description>\n';
         xmp += '</rdf:RDF>\n';
         xmp += '</x:xmpmeta>\n';
@@ -17167,7 +18222,7 @@ class PDFExporter {
     }
 }
 // ============================================================================
-// aPDF (Agentic PDF) Metadata Generator
+// aPDF (Iron Documents) Metadata Generator
 // ============================================================================
 /**
  * Generates rich aPDF metadata from a parsed PDF document.
@@ -17251,7 +18306,7 @@ class APDFMetadataGenerator {
             aiContent: this.buildAIContent(ai, fullText),
             display: this.buildDisplayHints(ai, firstPage, textContent),
             provenance: {
-                generator: 'AgenticPDF',
+                generator: 'IronDocuments',
                 generatorVersion: '1.0.0',
                 generatedAt: new Date().toISOString(),
                 pipeline,
@@ -17355,7 +18410,7 @@ class APDFMetadataGenerator {
                 const searchEnd = Math.min(fullText.length, searchStart + vicinity);
                 const nearText = nameIdx >= 0 ? fullText.slice(searchStart, searchEnd) : '';
                 // ORCID — look near author name
-                const orcidPattern = new RegExp(firstName + '[\\s\\S]{0,200}(\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX])', 'i');
+                const orcidPattern = new RegExp(escapeRegExp(firstName) + '[\\s\\S]{0,200}(\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX])', 'i');
                 const orcidMatch = fullText.match(orcidPattern);
                 if (orcidMatch)
                     author.orcid = orcidMatch[1];
@@ -18135,7 +19190,7 @@ class PDFWriter {
     }
     async getOriginalBuffer() {
         // Get the original PDF buffer
-        // This would be stored in the AgenticPDF instance
+        // This would be stored in the IronDocuments instance
         return new ArrayBuffer(0);
     }
     async collectObjects() {
@@ -18389,7 +19444,7 @@ var TelemetryEventType;
 })(TelemetryEventType || (TelemetryEventType = {}));
 /**
  * Telemetry client for anonymous usage tracking.
- * Enabled by default, can be disabled with AGENTICPDF_NO_TELEMETRY env var
+ * Enabled by default, can be disabled with IRONDOCUMENTS_NO_TELEMETRY env var
  * or by calling Telemetry.disable().
  *
  * When OpenTelemetry is configured (via OTEL_EXPORTER_OTLP_ENDPOINT env var
@@ -18409,13 +19464,13 @@ class Telemetry {
         try {
             // Dynamic require — absent package ⇒ catch silently
             const api = require('@opentelemetry/api');
-            this._otelTracer = api.trace.getTracer('agenticpdf', this.version);
-            const meter = api.metrics.getMeter('agenticpdf', this.version);
-            this._otelCounter = meter.createCounter('agenticpdf.events', {
-                description: 'AgenticPDF telemetry events',
+            this._otelTracer = api.trace.getTracer('irondocuments', this.version);
+            const meter = api.metrics.getMeter('irondocuments', this.version);
+            this._otelCounter = meter.createCounter('irondocuments.events', {
+                description: 'IronDocuments telemetry events',
             });
-            this._otelHistogram = meter.createHistogram('agenticpdf.duration', {
-                description: 'AgenticPDF operation duration',
+            this._otelHistogram = meter.createHistogram('irondocuments.duration', {
+                description: 'IronDocuments operation duration',
                 unit: 'ms',
             });
         }
@@ -18434,20 +19489,20 @@ class Telemetry {
         this.runtimeInfo = this.detectRuntime();
         // Check for opt-out via environment variable or global
         if (typeof process !== 'undefined' && process.env) {
-            if (process.env.AGENTICPDF_NO_TELEMETRY === '1' ||
-                process.env.AGENTICPDF_NO_TELEMETRY === 'true' ||
-                process.env.AGENTICPDF_OFFLINE === '1') {
+            if (process.env.IRONDOCUMENTS_NO_TELEMETRY === '1' ||
+                process.env.IRONDOCUMENTS_NO_TELEMETRY === 'true' ||
+                process.env.IRONDOCUMENTS_OFFLINE === '1') {
                 this._enabled = false;
             }
         }
         // Check for browser global opt-out
-        if (typeof window !== 'undefined' && window.__AGENTICPDF_NO_TELEMETRY__) {
+        if (typeof window !== 'undefined' && window.__IRONDOCUMENTS_NO_TELEMETRY__) {
             this._enabled = false;
         }
         // Check Deno environment
         if (typeof globalThis.Deno !== 'undefined') {
             try {
-                const noTelemetry = globalThis.Deno.env.get('AGENTICPDF_NO_TELEMETRY');
+                const noTelemetry = globalThis.Deno.env.get('IRONDOCUMENTS_NO_TELEMETRY');
                 if (noTelemetry === '1' || noTelemetry === 'true') {
                     this._enabled = false;
                 }
@@ -18586,7 +19641,7 @@ class Telemetry {
         this.resolveOtel();
         if (this._otelTracer) {
             try {
-                this._otelTracer.startActiveSpan(`agenticpdf.${type}`, (span) => {
+                this._otelTracer.startActiveSpan(`irondocuments.${type}`, (span) => {
                     span.setAttribute('event.type', type);
                     span.setAttribute('session.id', this.sessionId);
                     for (const [k, v] of Object.entries(eventData)) {
@@ -18696,7 +19751,7 @@ class Telemetry {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Client': 'agenticpdf',
+                    'X-Client': 'irondocuments',
                     'X-Version': this.version,
                     'X-Runtime': this.runtimeInfo?.runtime ?? 'unknown',
                 },
@@ -18829,7 +19884,7 @@ class AgentContext {
     /** Rebuild the tool lookup index from active skills (or all skills if none active). */
     _rebuildToolIndex() {
         this._toolIndex.clear();
-        const skills = AgenticPDF.listSkills();
+        const skills = IronDocuments.listSkills();
         for (const skill of skills) {
             if (this._activeSkills.size === 0 || this._activeSkills.has(skill.id)) {
                 for (const tool of skill.tools) {
@@ -19073,7 +20128,7 @@ class AgentContext {
 
     // Export to global scope
     if (typeof window !== 'undefined') {
-        window.AgenticPDF = AgenticPDF;
+        window.IronDocuments = IronDocuments;
         window.TextExtractor = TextExtractor;
         window.ImageExtractor = ImageExtractor;
         window.FormExtractor = FormExtractor;
@@ -19083,7 +20138,7 @@ class AgentContext {
         window.ThemeManager = ThemeManager;
     }
     if (typeof global !== 'undefined') {
-        global.AgenticPDF = AgenticPDF;
+        global.IronDocuments = IronDocuments;
         global.TextExtractor = TextExtractor;
         global.ImageExtractor = ImageExtractor;
         global.FormExtractor = FormExtractor;

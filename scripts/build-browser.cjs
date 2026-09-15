@@ -123,6 +123,13 @@ ${jsContent}
     fs.copyFileSync(outputPath, demosPath);
     console.log('✅ Copied to demos folder');
 
+    // Copy to the website, which serves it at /irondocuments-browser.js. The
+    // viewer demo fetches that path, so a bundle missing here is a 404 the
+    // build itself should prevent.
+    const websitePath = path.join(__dirname, '..', 'website', 'public', 'irondocuments-browser.js');
+    fs.copyFileSync(outputPath, websitePath);
+    console.log('✅ Copied to website/public');
+
     // Clean up temp directory
     fs.rmSync(tempDir, { recursive: true, force: true });
 
